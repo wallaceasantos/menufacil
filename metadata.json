@@ -1,0 +1,6 @@
+{
+  "name": "SaaS Architecture Blueprint",
+  "description": "Technical proposal for a B2B2C Restaurant SaaS Platform using NestJS, PostgreSQL, and React Native.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
