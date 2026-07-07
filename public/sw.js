@@ -30,6 +30,9 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
+  // Skip cross-origin requests (fonts, images from CDNs, etc.)
+  if (url.origin !== self.location.origin) return
+
   // Skip API and SSE requests
   if (url.pathname.startsWith('/api/') || url.pathname.includes('events/stream')) return
 
