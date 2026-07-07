@@ -182,52 +182,50 @@ async function billingCron() {
       }
     }
 
-    // 2. Check tenants that missed payment (calculate overdue days from actual difference)
-    if (LOCAL_MODE) {
-      const overdueThreshold = new Date()
-      overdueThreshold.setDate(overdueThreshold.getDate() - 31)
+    // 2. Check tenants that missed payment (always runs)
+    const overdueThreshold = new Date()
+    overdueThreshold.setDate(overdueThreshold.getDate() - 31)
 
-      const missed = await prisma.tenant.findMany({
-        where: {
-          subscriptionStatus: 'authorized',
-          paymentStatus: 'paid',
-          lastBillingDate: { lte: overdueThreshold },
-          plan: 'completo',
-        },
-      })
+    const missed = await prisma.tenant.findMany({
+      where: {
+        subscriptionStatus: 'authorized',
+        paymentStatus: 'paid',
+        lastBillingDate: { lte: overdueThreshold },
+        plan: 'completo',
+      },
+    })
 
-      for (const tenant of missed) {
-        const daysSinceLastBilling = tenant.lastBillingDate
-          ? Math.floor((now.getTime() - new Date(tenant.lastBillingDate).getTime()) / (1000 * 60 * 60 * 24)) - 30
-          : 1
+    for (const tenant of missed) {
+      const daysSinceLastBilling = tenant.lastBillingDate
+        ? Math.floor((now.getTime() - new Date(tenant.lastBillingDate).getTime()) / (1000 * 60 * 60 * 24)) - 30
+        : 1
 
-        const actualOverdue = Math.max(1, daysSinceLastBilling)
-        const updateData: any = { overdueDays: actualOverdue }
+      const actualOverdue = Math.max(1, daysSinceLastBilling)
+      const updateData: any = { overdueDays: actualOverdue }
 
-        if (actualOverdue >= 30) {
-          updateData.plan = 'basico'
-          updateData.subscriptionStatus = 'cancelled'
-          updateData.cardLastFour = null
-          updateData.nextBillingDate = null
+      if (actualOverdue >= 30) {
+        updateData.plan = 'basico'
+        updateData.subscriptionStatus = 'cancelled'
+        updateData.cardLastFour = null
+        updateData.nextBillingDate = null
+        updateData.paymentStatus = 'overdue'
+
+        await logPlanChange({
+          tenantId: tenant.id,
+          oldPlan: tenant.plan,
+          newPlan: 'basico',
+          source: 'downgrade',
+          changedBy: 'system',
+        })
+        console.log(`[Billing Cron] Tenant ${tenant.id} downgraded to BASICO after ${actualOverdue} days overdue`)
+      } else {
+        if (actualOverdue >= 3 && tenant.paymentStatus !== 'overdue') {
           updateData.paymentStatus = 'overdue'
-
-          await logPlanChange({
-            tenantId: tenant.id,
-            oldPlan: tenant.plan,
-            newPlan: 'basico',
-            source: 'downgrade',
-            changedBy: 'system',
-          })
-          console.log(`[Billing Cron] Tenant ${tenant.id} downgraded to BASICO after ${actualOverdue} days overdue`)
-        } else {
-          if (actualOverdue >= 3 && tenant.paymentStatus !== 'overdue') {
-            updateData.paymentStatus = 'overdue'
           }
           console.log(`[Billing Cron] Tenant ${tenant.id} overdue day ${actualOverdue}`)
         }
 
         await prisma.tenant.update({ where: { id: tenant.id }, data: updateData })
-      }
     }
   } catch (err) {
     console.error('[Billing Cron] Error:', err)
