@@ -74,7 +74,15 @@ export function NewTenantModal({ isOpen, onClose, onSubmit, isSubmitting = false
       return;
     }
 
-    // Avança para o passo 2: dados de cobrança
+    // Grátis: envia direto, sem passo de cobrança
+    if (plan === 'basico') {
+      onSubmit({
+        tenantName, slug, plan, userName, email, password,
+      });
+      return;
+    }
+
+    // Completo: avança para dados de cobrança
     setStep('billing');
   };
 
@@ -110,7 +118,7 @@ export function NewTenantModal({ isOpen, onClose, onSubmit, isSubmitting = false
   const fieldClass = (field: string) =>
     `w-full bg-slate-100 dark:bg-[#121214] border ${errors[field] ? 'border-red-500' : 'border-slate-200 dark:border-[#262626]'} rounded-lg px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all`;
 
-  const headerTitle = step === 'account' ? 'Criar Conta' : 'Dados de Cobrança';
+  const headerTitle = step === 'account' ? 'Criar Conta' : 'Dados de Pagamento';
 
   // Pré-popula nome/email do passo 1 no BillingForm
   const [billingFirstName, ...billingLastName] = userName.split(' ');
