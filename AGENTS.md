@@ -258,3 +258,60 @@ hasFeature('stock-control', user?.plan) // true only for completo
 | Webhook 500 no MP | Modo local ativo, não chama API real |
 | Sidebar items overlapping footer | Usar `flex-1 overflow-y-auto` no nav, `shrink-0` no footer |
 | AnimatePresence duplicate key | Adicionar `key="unique-id"` no filho direto |
+
+## Railway Deployment — Status Atual
+
+Deploy fullstack no Railway: backend + frontend no mesmo serviço, PostgreSQL como serviço separado.
+
+- **Domínio público:** `https://menufacil-production.up.railway.app`
+- **Banco de dados:** PostgreSQL no Railway (`postgres.railway.internal` internamente; proxy público disponível)
+- **Build:** `npm run build` gera `dist/`
+- **Start:** `npm run start:prod` → `prisma db push --accept-data-loss && tsx src/server.ts`
+- **Repositório:** `https://github.com/wallaceasantos/menufacil.git` branch `master`
+
+### Variáveis de ambiente importantes no Railway
+
+```
+NODE_ENV=production
+PORT=8080
+APP_URL=https://menufacil-production.up.railway.app
+VITE_API_URL=/api
+JWT_SECRET=<obrigatório, forte>
+DATABASE_URL=<interna do Railway>
+MP_LOCAL_MODE=false          # false para pagamentos reais
+MP_ACCESS_TOKEN=<token de produção do Mercado Pago>
+MP_WEBHOOK_SECRET=<senha do webhook do MP>
+MP_WEBHOOK_URL=https://menufacil-production.up.railway.app/api/mp/webhook
+ADMIN_EMAIL=admin@menufacil.com
+ADMIN_INITIAL_PASSWORD=S100cem%
+```
+
+### Tarefas concluídas recentemente
+
+1. **CORS corrigido** — servidor reflete/permita a origem do próprio domínio (`src/server.ts`).
+2. **CSP ajustado** — permite Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`) e Unsplash (`images.unsplash.com`).
+3. **Service Worker corrigido** — ignora requisições cross-origin, evitando bloqueios de CSP (`public/sw.js`).
+4. **Botão "Resetar Banco" removido** do `AdminDashboard.tsx`.
+5. **Script de reset seguro criado** — `scripts/reset-db-railway.ts` limpa o banco e recria apenas o admin (`admin@menufacil.com` / `S100cem%`).
+6. **Banco restaurado** — dump local foi importado para o PostgreSQL do Railway via pgAdmin.
+
+### Scripts úteis
+
+```bash
+# Resetar banco do Railway (rodar localmente com DATABASE_URL pública)
+cd D:\saas-menu-facil
+$env:DATABASE_URL="postgresql://..."
+npx tsx scripts/reset-db-railway.ts
+```
+
+### Problemas ativos / pendentes
+
+- `package.json#prisma` gera warning de deprecation no Prisma 7 — não quebra, mas pode ser migrado para `prisma.config.ts` no futuro.
+- Deploys no Railway exigem redeploy manual após push para `master` se o auto-deploy não estiver habilitado.
+- Webhook do Mercado Pago deve estar configurado para `https://menufacil-production.up.railway.app/api/mp/webhook`.
+
+### Notas de segurança
+
+- `JWT_SECRET` é obrigatório em produção (`src/utils/env.ts`).
+- Rota `/admin/reset-db` continua bloqueada quando `NODE_ENV === 'production'` (`src/routes/admin.ts`).
+- Nunca execute `scripts/reset-db-railway.ts` sem backup e sem confirmar a `DATABASE_URL` correta.
