@@ -310,14 +310,14 @@ export default function Home() {
           <div className="text-orange-500 font-bold mb-1">
             WhatsApp de Vendas
           </div>
-          <div className="text-slate-900 dark:text-white">(11) 99999-9999</div>
+          <div className="text-slate-900 dark:text-white">(92) 98421-3885</div>
         </div>
         <div className="bg-slate-50 dark:bg-[#18181B] p-4 rounded-xl border border-slate-200 dark:border-[#262626]">
           <div className="text-orange-500 font-bold mb-1">
             E-mail de Suporte
           </div>
           <div className="text-slate-900 dark:text-white">
-            ajuda@menufacil.com
+            contato.menufacil@gmail.com
           </div>
         </div>
       </div>
