@@ -36,14 +36,19 @@ app.use(helmet({
 }))
 
 // CORS — APP_URL é a origem principal. Domínios adicionais podem ser listados em ADDITIONAL_CORS_ORIGINS separados por vírgula.
+function normalizeOrigin(origin: string | undefined): string | undefined {
+  return origin?.replace(/\/$/, '')
+}
+
 const allowedOrigins = new Set(
   [process.env.APP_URL, ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || [])]
+    .map(normalizeOrigin)
     .filter((o): o is string => Boolean(o))
 )
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.has(origin)) {
+    if (!origin || allowedOrigins.has(normalizeOrigin(origin) || '')) {
       callback(null, true)
     } else {
       callback(new Error(`CORS bloqueado: ${origin}`))
