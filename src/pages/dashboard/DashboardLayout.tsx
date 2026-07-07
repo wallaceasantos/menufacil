@@ -61,38 +61,39 @@ export function DashboardLayout() {
   }, [user]);
 
   const tenantRole = user?.tenantRole || 'dono'
+  const userPlan = user?.plan || 'basico'
 
   const allNavItems = [
-    { name: 'Visão Geral', path: '/dashboard', icon: LayoutDashboard, roles: ['dono', 'atendente'] },
-    { name: 'Cardápio', path: '/dashboard/menu', icon: UtensilsCrossed, roles: ['dono'] },
-    { name: 'Minha Loja', path: '/dashboard/store', icon: Store, roles: ['dono'] },
-    { name: 'Estoque', path: '/dashboard/inventory', icon: Package, roles: ['dono'] },
-    { name: 'Relatórios', path: '/dashboard/reports', icon: BarChart3, roles: ['dono'] },
-    { name: 'Áreas de Entrega', path: '/dashboard/delivery-zones', icon: Truck, roles: ['dono'] },
-    { name: 'Impressão', path: '/dashboard/printer', icon: Printer, roles: ['dono'] },
-    { name: 'Cupons', path: '/dashboard/discounts', icon: Tag, roles: ['dono'] },
-    { name: 'Equipe', path: '/dashboard/team', icon: Users, roles: ['dono'] },
-    { name: 'Configurações', path: '/dashboard/settings', icon: Settings, roles: ['dono'] },
-    { name: 'Pagamentos', path: '/dashboard/payments', icon: CreditCard, roles: ['dono'] },
-    { name: 'Assinatura', path: '/dashboard/subscription', icon: Repeat, roles: ['dono'] },
-    { name: 'Faturas', path: '/dashboard/invoices', icon: FileText, roles: ['dono'] },
-    { name: 'WhatsApp', path: '/dashboard/whatsapp', icon: MessageCircle, roles: ['dono'] },
-    { name: 'Suporte', path: '/dashboard/support', icon: Headset, roles: ['dono', 'atendente'] },
-    { name: 'Clientes', path: '/dashboard/customers', icon: Users, roles: ['dono', 'atendente'] },
-    { name: 'Pedidos', path: '/dashboard/orders', icon: ShoppingBag, roles: ['dono', 'atendente', 'cozinha', 'entregador'] },
+    { name: 'Visão Geral', path: '/dashboard', icon: LayoutDashboard, roles: ['dono', 'atendente'], plans: ['basico', 'completo'] },
+    { name: 'Cardápio', path: '/dashboard/menu', icon: UtensilsCrossed, roles: ['dono'], plans: ['basico', 'completo'] },
+    { name: 'Minha Loja', path: '/dashboard/store', icon: Store, roles: ['dono'], plans: ['basico', 'completo'] },
+    { name: 'Estoque', path: '/dashboard/inventory', icon: Package, roles: ['dono'], plans: ['completo'] },
+    { name: 'Relatórios', path: '/dashboard/reports', icon: BarChart3, roles: ['dono'], plans: ['completo'] },
+    { name: 'Áreas de Entrega', path: '/dashboard/delivery-zones', icon: Truck, roles: ['dono'], plans: ['completo'] },
+    { name: 'Impressão', path: '/dashboard/printer', icon: Printer, roles: ['dono'], plans: ['completo'] },
+    { name: 'Cupons', path: '/dashboard/discounts', icon: Tag, roles: ['dono'], plans: ['completo'] },
+    { name: 'Equipe', path: '/dashboard/team', icon: Users, roles: ['dono'], plans: ['completo'] },
+    { name: 'Configurações', path: '/dashboard/settings', icon: Settings, roles: ['dono'], plans: ['basico', 'completo'] },
+    { name: 'Pagamentos', path: '/dashboard/payments', icon: CreditCard, roles: ['dono'], plans: ['basico', 'completo'] },
+    { name: 'Assinatura', path: '/dashboard/subscription', icon: Repeat, roles: ['dono'], plans: ['basico', 'completo'] },
+    { name: 'Faturas', path: '/dashboard/invoices', icon: FileText, roles: ['dono'], plans: ['basico', 'completo'] },
+    { name: 'WhatsApp', path: '/dashboard/whatsapp', icon: MessageCircle, roles: ['dono'], plans: ['basico', 'completo'] },
+    { name: 'Suporte', path: '/dashboard/support', icon: Headset, roles: ['dono', 'atendente'], plans: ['basico', 'completo'] },
+    { name: 'Clientes', path: '/dashboard/customers', icon: Users, roles: ['dono', 'atendente'], plans: ['completo'] },
+    { name: 'Pedidos', path: '/dashboard/orders', icon: ShoppingBag, roles: ['dono', 'atendente', 'cozinha', 'entregador'], plans: ['completo'] },
   ]
 
-  const navItems = allNavItems.filter((item) => item.roles.includes(tenantRole))
+  const navItems = allNavItems.filter((item) => item.roles.includes(tenantRole) && item.plans.includes(userPlan))
 
   // Redirect non-authorized users away from restricted pages
   useEffect(() => {
     const currentPath = location.pathname
-    const allowed = allNavItems.filter((item) => item.roles.includes(tenantRole))
+    const allowed = allNavItems.filter((item) => item.roles.includes(tenantRole) && item.plans.includes(userPlan))
     const isAllowed = allowed.some((item) => currentPath === item.path || currentPath.startsWith(item.path + '/'))
     if (!isAllowed && currentPath !== '/dashboard' && currentPath.startsWith('/dashboard')) {
-      window.location.href = '/dashboard/orders'
+      window.location.href = '/dashboard'
     }
-  }, [location.pathname, tenantRole])
+  }, [location.pathname, tenantRole, userPlan])
 
   const handleAcceptInvite = async (token: string) => {
     try {
