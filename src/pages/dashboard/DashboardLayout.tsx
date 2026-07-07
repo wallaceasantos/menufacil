@@ -77,7 +77,7 @@ export function DashboardLayout() {
     { name: 'Pagamentos', path: '/dashboard/payments', icon: CreditCard, roles: ['dono'], plans: ['basico', 'completo'] },
     { name: 'Assinatura', path: '/dashboard/subscription', icon: Repeat, roles: ['dono'], plans: ['basico', 'completo'] },
     { name: 'Faturas', path: '/dashboard/invoices', icon: FileText, roles: ['dono'], plans: ['basico', 'completo'] },
-    { name: 'WhatsApp', path: '/dashboard/whatsapp', icon: MessageCircle, roles: ['dono'], plans: ['basico', 'completo'] },
+    { name: 'WhatsApp', path: '/dashboard/whatsapp', icon: MessageCircle, roles: ['dono'], plans: ['completo'] },
     { name: 'Suporte', path: '/dashboard/support', icon: Headset, roles: ['dono', 'atendente'], plans: ['basico', 'completo'] },
     { name: 'Clientes', path: '/dashboard/customers', icon: Users, roles: ['dono', 'atendente'], plans: ['completo'] },
     { name: 'Pedidos', path: '/dashboard/orders', icon: ShoppingBag, roles: ['dono', 'atendente', 'cozinha', 'entregador'], plans: ['completo'] },
