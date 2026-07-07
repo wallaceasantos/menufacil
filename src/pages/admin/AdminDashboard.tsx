@@ -13,36 +13,6 @@ import { PLANS, formatPlanPrice, type PlanType } from '../../data/plans';
 import { api, uploadTicketAttachment, type UploadedAttachment } from '../../lib/api';
 import { InvoiceManager } from './InvoiceManager';
 
-function ResetDBButton() {
-  const [confirming, setConfirming] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const handleReset = async () => {
-    if (!confirming) { setConfirming(true); return }
-    setLoading(true);
-    try {
-      const resp = await api<{ message: string }>('/admin/reset-db', { method: 'POST' });
-      toast.success(resp.message);
-      setConfirming(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao resetar');
-    } finally { setLoading(false); }
-  };
-  return (
-    <div className="flex items-center gap-2">
-      {confirming && (
-        <button onClick={() => setConfirming(false)} className="px-4 py-2 bg-slate-100 dark:bg-[#262626] text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium">
-          Cancelar
-        </button>
-      )}
-      <button onClick={handleReset} disabled={loading}
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${confirming ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20'} disabled:opacity-50`}>
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-        {loading ? 'Resetando...' : confirming ? 'Confirmar RESET total?' : 'Resetar Banco'}
-      </button>
-    </div>
-  );
-}
-
 interface Tenant {
   id: string;
   name: string;
@@ -624,15 +594,6 @@ export function AdminDashboard() {
               </div>
                 </div>
 
-                <div className="bg-white dark:bg-[#121214] border border-red-200 dark:border-red-500/20 rounded-2xl p-6 mt-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-red-600 dark:text-red-500">Zona de Perigo</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Remove todos os dados. Mantém apenas admin@menufacil</p>
-                    </div>
-                    <ResetDBButton />
-                  </div>
-                </div>
               </motion.div>
             )}
 
