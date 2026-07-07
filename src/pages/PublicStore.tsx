@@ -64,11 +64,13 @@ export default function PublicStore() {
     error: tenantError,
   } = useApi<ApiTenant>(storeName ? `/loja/${storeName}` : null);
 
+  const localTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
+
   const {
     data: categoriesData,
     loading: categoriesLoading,
     error: categoriesError,
-  } = useApi<ApiCategory[]>(storeName ? `/loja/${storeName}/produtos` : null);
+  } = useApi<ApiCategory[]>(storeName ? `/loja/${storeName}/produtos?now=${encodeURIComponent(localTime)}` : null);
 
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [cart, setCart] = useState<CartItem[]>([]);
