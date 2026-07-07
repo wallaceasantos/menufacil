@@ -27,7 +27,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://api.qrserver.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:", "https://images.unsplash.com"],
-      connectSrc: ["'self'", "ws:", "wss:", "https://api.mercadopago.com", "https://api.qrserver.com", "https://images.unsplash.com"],
+      connectSrc: ["'self'", "ws:", "wss:", "https://api.mercadopago.com", "https://api.qrserver.com", "https://images.unsplash.com", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       frameSrc: ["'self'", "https://*.mercadopago.com", "https://*.mercadolibre.com"],
     },
