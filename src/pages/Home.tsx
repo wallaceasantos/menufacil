@@ -944,8 +944,7 @@ export default function Home() {
               Planos sem surpresas
             </h2>
             <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-lg">
-              Sem taxa de adesão, sem comissões por pedido. Um valor fixo mensal
-              que cabe no bolso do MEI.
+              Comece grátis, escale quando precisar. Sem taxa de adesão, sem comissões por pedido.
             </p>
           </div>
 
@@ -1020,7 +1019,7 @@ export default function Home() {
                         : 'bg-slate-200 hover:bg-slate-300 dark:bg-[#262626] dark:hover:bg-[#3f3f46] text-slate-900 dark:text-white'
                     }`}
                   >
-                    Assinar {plan.name}
+                    {isComplete ? `Assinar ${plan.name}` : 'Começar Grátis'}
                   </button>
                 </motion.div>
               );
@@ -1103,7 +1102,7 @@ export default function Home() {
                               : 'bg-slate-200 hover:bg-slate-300 dark:bg-[#262626] dark:hover:bg-[#3f3f46] text-slate-900 dark:text-white'
                           }`}
                         >
-                          Assinar {plan.name}
+                          {plan.id === 'completo' ? `Assinar ${plan.name}` : 'Começar Grátis'}
                         </button>
                       </td>
                     ))}

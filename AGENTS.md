@@ -13,6 +13,7 @@ Full-stack SaaS para cardápio digital e gestão de restaurantes. Multi-tenant, 
 | Payments | Mercado Pago (`src/lib/mercadopago.ts`) — PIX, cartão, boleto, subscription |
 | Upload | Cloudinary + Multer |
 | Push | Web Push (VAPID) — `web-push` lib |
+| Security | Helmet, express-rate-limit, CORS restrito |
 | Charts | Recharts |
 | CSS | Tailwind CSS 4 via `@tailwindcss/vite` plugin |
 
@@ -24,6 +25,7 @@ npx prisma db push    # sync schema
 npm run dev            # frontend :3000
 npm run dev:server     # backend :3001 (tsx watch)
 npm run lint           # tsc --noEmit
+npm start              # production: vite build + tsx server
 ```
 
 **Dev workflow:** Always 2 terminals — `npm run dev` + `npm run dev:server`. Backend needs restart on route/schema changes. Frontend HMR auto-reloads.
@@ -35,6 +37,8 @@ DATABASE_URL=postgresql://...
 VITE_API_URL=http://localhost:3001/api
 JWT_SECRET=...
 CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
 MP_ACCESS_TOKEN=TEST-xxx
 MP_WEBHOOK_SECRET=
 MP_WEBHOOK_URL=https://xxx.ngrok-free.dev
@@ -42,6 +46,7 @@ MP_TEST_PRICE=10
 MP_LOCAL_MODE=true          # simulates payments without real MP API
 VAPID_PUBLIC_KEY=...
 VAPID_PRIVATE_KEY=...
+APP_URL=http://localhost:3000
 ```
 
 **Important:** `MP_LOCAL_MODE=true` bypasses Mercado Pago API. All payment flows simulate locally. `MP_TEST_PRICE` overrides the Completo plan price for testing.
@@ -82,7 +87,7 @@ src/
     payments.ts               — PIX/cash/card config
     invoices.ts               — invoice CRUD
     upload.ts                 — Cloudinary image upload
-    admin.ts                  — tenant list, finance, announcements
+    admin.ts                  — tenant list, finance, announcements, reset-db
   lib/
     prisma.ts                 — PrismaClient singleton (import from here)
     api.ts                    — client-side fetch wrappers (api, apiWithTenant, etc.)
@@ -238,15 +243,15 @@ hasFeature('stock-control', user?.plan) // true only for completo
 ## Regras Importantes
 
 1. **Nunca modificar planos sem autorização explícita** — os preços (Grátis R$0, Completo R$79,90) são decisão de negócio
-2. **Nunca commitar** — projeto não usa git neste momento
-3. **Prisma schema é single source of truth** — não existem migrations SQL manuais
-4. **Windows**: `npx prisma generate` pode dar EPERM. Solução: `taskkill /F /IM node.exe` primeiro
-5. **Teste**: não há testes automatizados. Mudanças devem ser testadas manualmente no `localhost:3000`/`localhost:3001`
-6. **MP_LOCAL_MODE=true** no .env atual — todas as chamadas Mercado Pago são simuladas
-7. **SSE timeout**: `server.timeout = 0` (infinito) para conexões SSE
-8. **Sidebar**: itens filtrados por `tenantRole`. Dono vê tudo, cozinha só vê Pedidos
-9. **Import paths**: de `src/components/` para `src/contexts/` = `'../contexts/...'` (1 nível acima, não 2)
-10. **AnimatePresence** do framer-motion: filhos diretos precisam de `key` prop
+2. **Prisma schema é single source of truth** — não existem migrations SQL manuais
+3. **Windows**: `npx prisma generate` pode dar EPERM. Solução: `taskkill /F /IM node.exe` primeiro
+4. **Teste**: não há testes automatizados. Mudanças devem ser testadas manualmente no `localhost:3000`/`localhost:3001`
+5. **MP_LOCAL_MODE=true** no .env atual — todas as chamadas Mercado Pago são simuladas
+6. **SSE timeout**: `server.timeout = 0` (infinito) para conexões SSE
+7. **Sidebar**: itens filtrados por `tenantRole`. Dono vê tudo, cozinha só vê Pedidos
+8. **Import paths**: de `src/components/` para `src/contexts/` = `'../contexts/...'` (1 nível acima, não 2)
+9. **AnimatePresence** do framer-motion: filhos diretos precisam de `key` prop
+10. **Rotas públicas**: não exigem auth — `/api/loja/*`, `/api/testimonials`, `/register`
 
 ## Common Issues & Fixes
 
@@ -258,6 +263,7 @@ hasFeature('stock-control', user?.plan) // true only for completo
 | Webhook 500 no MP | Modo local ativo, não chama API real |
 | Sidebar items overlapping footer | Usar `flex-1 overflow-y-auto` no nav, `shrink-0` no footer |
 | AnimatePresence duplicate key | Adicionar `key="unique-id"` no filho direto |
+| Admin SSE 401 | Admin não tem tenant — events.ts trata separadamente com heartbeat |
 
 ## Railway Deployment — Status Atual
 
@@ -266,7 +272,8 @@ Deploy fullstack no Railway: backend + frontend no mesmo serviço, PostgreSQL co
 - **Domínio público:** `https://menufacil-production.up.railway.app`
 - **Banco de dados:** PostgreSQL no Railway (`postgres.railway.internal` internamente; proxy público disponível)
 - **Build:** `npm run build` gera `dist/`
-- **Start:** `npm run start:prod` → `prisma db push --accept-data-loss && tsx src/server.ts`
+- **Start:** `npm start` → `vite build && tsx src/server.ts`
+- **Static serving:** Express serve `dist/` + SPA fallback em produção (`NODE_ENV=production`)
 - **Repositório:** `https://github.com/wallaceasantos/menufacil.git` branch `master`
 
 ### Variáveis de ambiente importantes no Railway
@@ -282,36 +289,23 @@ MP_LOCAL_MODE=false          # false para pagamentos reais
 MP_ACCESS_TOKEN=<token de produção do Mercado Pago>
 MP_WEBHOOK_SECRET=<senha do webhook do MP>
 MP_WEBHOOK_URL=https://menufacil-production.up.railway.app/api/mp/webhook
-ADMIN_EMAIL=admin@menufacil.com
-ADMIN_INITIAL_PASSWORD=S100cem%
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
 ```
 
-### Tarefas concluídas recentemente
+### Admin padrão
 
-1. **CORS corrigido** — servidor reflete/permita a origem do próprio domínio (`src/server.ts`).
-2. **CSP ajustado** — permite Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`) e Unsplash (`images.unsplash.com`).
-3. **Service Worker corrigido** — ignora requisições cross-origin, evitando bloqueios de CSP (`public/sw.js`).
-4. **Botão "Resetar Banco" removido** do `AdminDashboard.tsx`.
-5. **Script de reset seguro criado** — `scripts/reset-db-railway.ts` limpa o banco e recria apenas o admin (`admin@menufacil.com` / `S100cem%`).
-6. **Banco restaurado** — dump local foi importado para o PostgreSQL do Railway via pgAdmin.
-
-### Scripts úteis
-
-```bash
-# Resetar banco do Railway (rodar localmente com DATABASE_URL pública)
-cd D:\saas-menu-facil
-$env:DATABASE_URL="postgresql://..."
-npx tsx scripts/reset-db-railway.ts
-```
-
-### Problemas ativos / pendentes
-
-- `package.json#prisma` gera warning de deprecation no Prisma 7 — não quebra, mas pode ser migrado para `prisma.config.ts` no futuro.
-- Deploys no Railway exigem redeploy manual após push para `master` se o auto-deploy não estiver habilitado.
-- Webhook do Mercado Pago deve estar configurado para `https://menufacil-production.up.railway.app/api/mp/webhook`.
+- Email: `admin@menufacil.com`
+- Senha: `S100cem%`
+- **Resetar banco:** Admin Dashboard → Finanças → "Zona de Perigo" → Resetar Banco (limpa tudo, recria admin)
 
 ### Notas de segurança
 
-- `JWT_SECRET` é obrigatório em produção (`src/utils/env.ts`).
-- Rota `/admin/reset-db` continua bloqueada quando `NODE_ENV === 'production'` (`src/routes/admin.ts`).
-- Nunca execute `scripts/reset-db-railway.ts` sem backup e sem confirmar a `DATABASE_URL` correta.
+- `JWT_SECRET` é obrigatório em produção.
+- Helmet + rate limiting + CORS restrito estão ativos.
+- Rota `/admin/reset-db` disponível apenas para admin autenticado.
+- `@prisma/client` está em `dependencies` (não devDependencies).
+- `.env` não é commitado (`.gitignore` cobre `.env*`).

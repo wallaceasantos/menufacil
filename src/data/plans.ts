@@ -26,7 +26,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     id: 'basico',
     name: 'Grátis',
     price: 0,
-    description: 'Tudo que você precisa para começar: cardápio digital, pedidos via WhatsApp e gestão de pedidos.',
+    description: 'Cardápio digital, link personalizado e pedidos direto no WhatsApp. Perfeito para começar.',
   },
   completo: {
     id: 'completo',
