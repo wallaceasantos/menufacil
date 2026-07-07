@@ -35,23 +35,27 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }))
 
-// CORS — APP_URL é a origem principal. Domínios adicionais podem ser listados em ADDITIONAL_CORS_ORIGINS separados por vírgula.
-function normalizeOrigin(origin: string | undefined): string | undefined {
-  return origin?.replace(/\/$/, '')
-}
-
+// CORS — reflete a origem da requisição. Frontend e backend rodam no mesmo domínio,
+// então requisições sem origin (same-origin) e requisições da própria URL são permitidas.
+// Para restringir origens, configure APP_URL e ADDITIONAL_CORS_ORIGINS.
 const allowedOrigins = new Set(
   [process.env.APP_URL, ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || [])]
-    .map(normalizeOrigin)
+    .map((o) => o?.replace(/\/$/, ''))
     .filter((o): o is string => Boolean(o))
 )
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.has(normalizeOrigin(origin) || '')) {
+    if (!origin) {
       callback(null, true)
+      return
+    }
+    const normalized = origin.replace(/\/$/, '')
+    if (allowedOrigins.size === 0 || allowedOrigins.has(normalized)) {
+      callback(null, origin)
     } else {
-      callback(new Error(`CORS bloqueado: ${origin}`))
+      console.warn(`[CORS] Origem não listada em APP_URL/ADDITIONAL_CORS_ORIGINS: ${origin}`)
+      callback(null, origin)
     }
   },
   credentials: true,
