@@ -15,6 +15,8 @@ import { resolveTenantByDomain } from './middleware/domain'
 dotenv.config()
 
 const app = express()
+app.set('trust proxy', 1)
+
 const PORT = process.env.PORT || 3001
 
 // Security headers
@@ -33,9 +35,20 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }))
 
-// CORS
+// CORS — APP_URL é a origem principal. Domínios adicionais podem ser listados em ADDITIONAL_CORS_ORIGINS separados por vírgula.
+const allowedOrigins = new Set(
+  [process.env.APP_URL, ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || [])]
+    .filter((o): o is string => Boolean(o))
+)
+
 app.use(cors({
-  origin: process.env.APP_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error(`CORS bloqueado: ${origin}`))
+    }
+  },
   credentials: true,
 }))
 

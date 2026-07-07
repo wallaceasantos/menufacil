@@ -2,9 +2,10 @@ import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { eventBus } from '../lib/eventBus'
 import jwt from 'jsonwebtoken'
+import { getJwtSecret } from '../utils/env'
 
 const router = Router()
-const JWT_SECRET = process.env.JWT_SECRET || 'menufacil-dev-secret-change-in-production'
+const JWT_SECRET = getJwtSecret()
 
 router.get('/stream', async (req: Request, res: Response) => {
   const token = req.query.token as string || req.headers.authorization?.replace('Bearer ', '')
@@ -26,6 +27,21 @@ router.get('/stream', async (req: Request, res: Response) => {
           where: { id: decoded.userId },
           include: { tenant: { select: { id: true } } },
         })
+        if (user?.role === 'admin') {
+          res.setHeader('Content-Type', 'text/event-stream')
+          res.setHeader('Cache-Control', 'no-cache, no-transform')
+          res.setHeader('Connection', 'keep-alive')
+          res.setHeader('X-Accel-Buffering', 'no')
+          res.flushHeaders?.()
+
+          res.write(`event: connected\ndata: ${JSON.stringify({ role: 'admin', timestamp: new Date().toISOString() })}\n\n`)
+          const hb = setInterval(() => { try { res.write(`: heartbeat ${Date.now()}\n\n`) } catch {} }, 25000)
+          const cleanup = () => { clearInterval(hb); try { res.end() } catch {} }
+          req.on('close', cleanup)
+          req.on('error', cleanup)
+          res.on('close', cleanup)
+          return
+        }
         tenantId = user?.tenant?.id
       }
     } catch {}

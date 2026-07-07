@@ -121,7 +121,7 @@ export function InvoiceManager() {
       formData.append('document', file);
 
       const token = sessionStorage.getItem('jwt_token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/invoices/${invoice.id}/document`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/invoices/${invoice.id}/document`, {
         method: 'POST',
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -270,7 +270,7 @@ export function InvoiceManager() {
                     <td className="px-6 py-4">
                       {invoice.documentUrl ? (
                         <a
-                          href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/invoices/${invoice.id}/download?token=${encodeURIComponent(sessionStorage.getItem('jwt_token') || '')}`}
+                          href={`${import.meta.env.VITE_API_URL || '/api'}/invoices/${invoice.id}/download?token=${encodeURIComponent(sessionStorage.getItem('jwt_token') || '')}`}
                           className="inline-flex items-center gap-1.5 text-orange-600 dark:text-orange-400 hover:underline text-sm"
                         >
                           <Download className="w-4 h-4" /> Baixar boleto

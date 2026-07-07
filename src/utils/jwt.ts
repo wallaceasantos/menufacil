@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
+import { getJwtSecret } from './env'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'menufacil-dev-secret'
+const JWT_SECRET = getJwtSecret()
 
 export interface TokenPayload {
   userId: string

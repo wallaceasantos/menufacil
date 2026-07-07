@@ -1,3 +1,5 @@
+import crypto from 'node:crypto'
+
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || ''
 const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET || ''
 const BASE_URL = 'https://api.mercadopago.com/v1'
@@ -206,12 +208,24 @@ export function getPaymentByExternalRef(externalRef: string): Promise<{ results:
   return mpFetch<{ results: MpPayment[] }>(`/payments/search?external_reference=${encodeURIComponent(externalRef)}&sort=date_created&criteria=desc`)
 }
 
-export function verifyWebhookSignature(body: string, signature: string): boolean {
+export function verifyWebhookSignature(body: string, signatureHeader: string): boolean {
   if (!MP_WEBHOOK_SECRET) return true
-  const crypto = require('crypto')
+
+  const parts = signatureHeader.split(',').reduce((acc, part) => {
+    const [key, value] = part.split('=')
+    if (key && value) acc[key.trim()] = value.trim()
+    return acc
+  }, {} as Record<string, string>)
+
+  const ts = parts.ts
+  const hash = parts.v1
+
+  if (!ts || !hash) return false
+
   const expected = crypto
     .createHmac('sha256', MP_WEBHOOK_SECRET)
-    .update(body)
+    .update(`${ts}.${body}`)
     .digest('hex')
-  return signature === expected
+
+  return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(expected))
 }

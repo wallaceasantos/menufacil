@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+const API_BASE = import.meta.env.VITE_API_URL || '/api'
 const STORAGE_KEY = 'menufacil_tracking_phone'
 
 const STATUS_STEPS = [

@@ -11,6 +11,7 @@ import { sanitizeCpf } from '../lib/cpf'
 const router = Router()
 
 const WEBHOOK_URL = process.env.MP_WEBHOOK_URL || ''
+const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET || ''
 const TEST_PRICE = process.env.MP_TEST_PRICE ? parseFloat(process.env.MP_TEST_PRICE) : null
 const LOCAL_MODE = process.env.MP_LOCAL_MODE === 'true'
 
@@ -216,7 +217,7 @@ router.post('/checkout/card', authenticate, extractTenant, async (req: Request, 
         transaction_amount: value,
         currency_id: 'BRL',
       },
-      back_url: `${WEBHOOK_URL || 'http://localhost:3001'}/dashboard`,
+      back_url: `${process.env.APP_URL || WEBHOOK_URL || 'http://localhost:3001'}/dashboard`,
       notification_url: WEBHOOK_URL ? `${WEBHOOK_URL}/api/mp/webhook` : undefined,
     })
 
@@ -324,6 +325,18 @@ router.post('/create-customer', authenticate, extractTenant, async (req: Request
 
 router.post('/webhook', async (req: Request, res: Response) => {
   try {
+    const rawBody = (req as any).rawBody as string | undefined
+    const signatureHeader = req.headers['x-signature'] as string | undefined
+
+    if (!LOCAL_MODE && MP_WEBHOOK_SECRET && rawBody && signatureHeader) {
+      const valid = mp.verifyWebhookSignature(rawBody, signatureHeader)
+      if (!valid) {
+        console.warn('[MP Webhook] Assinatura inválida')
+        res.status(401).json({ error: 'Assinatura inválida' })
+        return
+      }
+    }
+
     const body = req.body
     console.log('[MP Webhook] Received:', JSON.stringify(body).slice(0, 500))
 

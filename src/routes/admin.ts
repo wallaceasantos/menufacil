@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { prisma } from '../lib/prisma'
 import { PLANS } from '../data/plans'
 import { authenticate, requireAdmin } from '../middleware/auth'
+import { hashPassword } from '../utils/password'
 
 const router = Router()
 
@@ -155,6 +156,65 @@ router.get('/plan-history', async (req, res, next) => {
         createdAt: l.createdAt.toISOString(),
       }))
     )
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/reset-db', async (_req, res, next) => {
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      res.status(403).json({ error: 'Reset de banco não permitido em produção' })
+      return
+    }
+    // Delete all data in correct order (children first)
+    await prisma.stockMovement.deleteMany()
+    await prisma.inventoryBatch.deleteMany()
+    await prisma.purchaseOrderItem.deleteMany()
+    await prisma.purchaseOrder.deleteMany()
+    await prisma.productRecipe.deleteMany()
+    await prisma.productChoiceOption.deleteMany()
+    await prisma.productChoiceGroup.deleteMany()
+    await prisma.productComponent.deleteMany()
+    await prisma.orderItemComponent.deleteMany()
+    await prisma.orderItemChoice.deleteMany()
+    await prisma.orderItem.deleteMany()
+    await prisma.printJob.deleteMany()
+    await prisma.printerConfig.deleteMany()
+    await prisma.pushSubscription.deleteMany()
+    await prisma.supportTicket.deleteMany()
+    await prisma.ticketMessage.deleteMany()
+    await prisma.ticketAttachment.deleteMany()
+    await prisma.invoice.deleteMany()
+    await prisma.planChangeLog.deleteMany()
+    await prisma.discount.deleteMany()
+    await prisma.deliveryZone.deleteMany()
+    await prisma.order.deleteMany()
+    await prisma.product.deleteMany()
+    await prisma.category.deleteMany()
+    await prisma.inventoryItem.deleteMany()
+    await prisma.supplier.deleteMany()
+    await prisma.customer.deleteMany()
+    await prisma.invite.deleteMany()
+    await prisma.whatsAppConfig.deleteMany()
+    await prisma.paymentConfig.deleteMany()
+    await prisma.user.deleteMany()
+    await prisma.tenant.deleteMany()
+    await prisma.globalAnnouncement.deleteMany()
+
+    // Recreate admin user
+    const passwordHash = await hashPassword('S100cem%')
+    await prisma.user.create({
+      data: {
+        name: 'Admin',
+        email: 'admin@menufacil.com',
+        passwordHash,
+        role: 'admin',
+      },
+    })
+
+    console.log('[Admin] Database reset complete - admin@menufacil recreated')
+    res.json({ message: 'Banco de dados resetado com sucesso. Admin: admin@menufacil / S100cem%' })
   } catch (err) {
     next(err)
   }
