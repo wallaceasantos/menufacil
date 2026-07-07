@@ -70,7 +70,7 @@ export const PLAN_FEATURES: PlanFeature[] = [
     id: 'order-status-management',
     name: 'Gerenciamento do status dos pedidos',
     description: 'Controle completo do fluxo: Pendente, Preparando e Concluído',
-    availableIn: ['basico', 'completo'],
+    availableIn: ['completo'],
   },
   {
     id: 'coupon-printing',
