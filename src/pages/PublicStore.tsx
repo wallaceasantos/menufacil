@@ -133,7 +133,6 @@ export default function PublicStore() {
       (category.products || []).map((product) => ({
         ...product,
         category: category.name,
-        image: product.imageUrl || undefined,
         active: product.isActive !== false,
       }))
     );
