@@ -137,7 +137,13 @@ if (process.env.NODE_ENV === 'production' || process.env.SERVE_STATIC === 'true'
   app.use(express.static(distPath))
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next()
-    res.sendFile(path.join(distPath, 'index.html'))
+    const indexPath = path.join(distPath, 'index.html')
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error(`[Static] Failed to send ${indexPath}:`, err.message)
+        res.status(500).json({ error: 'App not built. Run vite build first.' })
+      }
+    })
   })
   console.log(`📦 Serving static files from ${distPath}`)
 }
