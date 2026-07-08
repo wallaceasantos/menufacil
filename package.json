@@ -18,7 +18,7 @@
     "db:studio": "prisma studio",
     "db:push": "prisma db push --accept-data-loss",
     "db:pull": "prisma db pull",
-    "start": "vite build && prisma db push --accept-data-loss && tsx src/server.ts",
+    "start": "vite build && tsx src/server.ts",
     "start:prod": "prisma db push --accept-data-loss && tsx src/server.ts",
     "postinstall": "prisma generate"
   },
