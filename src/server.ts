@@ -121,18 +121,6 @@ app.use('/api', generalLimiter)
 
 app.use('/api', routes)
 
-// Serve React SPA in production
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const distPath = path.resolve(__dirname, '..', 'dist')
-
-if (process.env.NODE_ENV === 'production' || process.env.SERVE_STATIC === 'true') {
-  app.use(express.static(distPath))
-  app.get(/^\/(?!api\/).*/, (_req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'))
-  })
-  console.log(`📦 Serving static files from ${distPath}`)
-}
-
 app.get('/', (_req, res) => {
   res.json({ status: 'ok', service: 'MenuFácil API', timestamp: new Date().toISOString() })
 })
@@ -140,6 +128,19 @@ app.get('/', (_req, res) => {
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
+
+// Serve React SPA in production
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const distPath = path.resolve(__dirname, '..', 'dist')
+
+if (process.env.NODE_ENV === 'production' || process.env.SERVE_STATIC === 'true') {
+  app.use(express.static(distPath))
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next()
+    res.sendFile(path.join(distPath, 'index.html'))
+  })
+  console.log(`📦 Serving static files from ${distPath}`)
+}
 
 app.use(errorHandler)
 
