@@ -275,8 +275,8 @@ model Order {
   paymentMethod   String?     @map("payment_method") @db.VarChar(100)
   mpPaymentId     String?     @map("mp_payment_id") @db.VarChar(50)
   mpPaymentStatus String?     @map("mp_payment_status") @db.VarChar(50)
-  mpPixPayload    String?     @map("mp_pix_payload") @db.VarChar(500)
-  mpPixQrCode     String?     @map("mp_pix_qr_code") @db.VarChar(500)
+  mpPixPayload    String?     @map("mp_pix_payload") @db.Text
+  mpPixQrCode     String?     @map("mp_pix_qr_code") @db.Text
   stockDeducted   Boolean?    @default(false) @map("stock_deducted")
   customerId      String?     @map("customer_id") @db.Uuid
   rating          Int?        @db.SmallInt
