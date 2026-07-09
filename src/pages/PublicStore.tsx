@@ -438,10 +438,10 @@ export default function PublicStore() {
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
               {storeInfo.logo ? (
-                <img src={storeInfo.logo} alt={storeInfo.name} className="w-12 h-12 rounded-full object-cover" />
+                <img src={storeInfo.logo} alt={storeInfo.name} className="h-20 w-20 rounded-2xl object-cover border border-slate-200 dark:border-[#262626]" />
               ) : (
-                <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-full flex items-center justify-center">
-                  <Store className="w-6 h-6 text-orange-600 dark:text-orange-500" />
+                <div className="h-20 w-20 bg-orange-100 dark:bg-orange-500/20 rounded-2xl flex items-center justify-center">
+                  <Store className="w-8 h-8 text-orange-600 dark:text-orange-500" />
                 </div>
               )}
               <div>
