@@ -266,7 +266,16 @@ export function AdminDashboard() {
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#121214] border-r border-slate-200 dark:border-[#262626] transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="h-full flex flex-col">
           <div className="p-6 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-orange-600 dark:text-orange-500">MenuFácil<span className="text-slate-900 dark:text-white text-sm ml-1 font-normal uppercase tracking-wider">Admin</span></h1>
+            <div className="flex items-center gap-2">
+              <img src="/logo.png" alt="MenuFácil"
+                className="h-8 w-auto object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none'
+                  const fb = document.querySelector('.admin-logo-fallback')
+                  if (fb) (fb as HTMLElement).style.display = 'block'
+                }} />
+              <h1 className="text-2xl font-bold text-orange-600 dark:text-orange-500 admin-logo-fallback">MenuFácil<span className="text-slate-900 dark:text-white text-sm ml-1 font-normal uppercase tracking-wider">Admin</span></h1>
+            </div>
             <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-500 hover:text-slate-900 dark:hover:text-white">
               <XCircle className="w-6 h-6" />
             </button>

@@ -122,10 +122,16 @@ export function DashboardLayout() {
       `}>
         <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-slate-200 dark:border-[#262626]">
           <Link to="/dashboard" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
+            <img src="/logo.png" alt="MenuFácil"
+              className="h-8 w-auto object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none'
+                const fb = document.querySelector('.logo-fallback')
+                if (fb) (fb as HTMLElement).style.display = 'flex'
+              }} />
+            <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center logo-fallback">
               <UtensilsCrossed className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-xl text-slate-900 dark:text-white">Painel</span>
           </Link>
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-500 hover:text-slate-900 dark:hover:text-white">
             <X className="w-5 h-5" />
