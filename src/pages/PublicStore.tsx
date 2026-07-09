@@ -926,46 +926,9 @@ export default function PublicStore() {
                           <h5 className="font-bold text-purple-900 dark:text-purple-400 mb-2 flex items-center gap-2">
                             <QrCode className="w-4 h-4" /> Pagamento via PIX
                           </h5>
-                          <p className="text-sm text-purple-700 dark:text-purple-400 mb-3">
-                            {storeInfo.paymentMethods.pixInstructions || 'Envie o comprovante pelo WhatsApp após o pagamento.'}
+                          <p className="text-sm text-purple-700 dark:text-purple-400">
+                            Após finalizar o pedido, um QR Code será gerado automaticamente. É rápido e seguro.
                           </p>
-
-                          {storeInfo.paymentMethods.pixBeneficiary && (
-                            <p className="text-sm text-slate-700 dark:text-slate-300 mb-1">
-                              <strong>Beneficiário:</strong> {storeInfo.paymentMethods.pixBeneficiary}
-                            </p>
-                          )}
-                          {storeInfo.paymentMethods.pixBank && (
-                            <p className="text-sm text-slate-700 dark:text-slate-300 mb-3">
-                              <strong>Banco:</strong> {storeInfo.paymentMethods.pixBank}
-                            </p>
-                          )}
-
-                          {storeInfo.paymentMethods.pixKey && (
-                            <div className="mt-3">
-                              <label className="text-xs font-medium text-slate-600 dark:text-slate-400 block mb-1">
-                                Chave PIX ({storeInfo.paymentMethods.pixKeyType?.toUpperCase()})
-                              </label>
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  readOnly
-                                  value={storeInfo.paymentMethods.pixKey}
-                                  className="flex-1 px-3 py-2 bg-white dark:bg-[#18181B] border border-purple-200 dark:border-purple-800/30 rounded-lg text-sm text-slate-900 dark:text-white"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(storeInfo.paymentMethods.pixKey || '');
-                                    toast.success('Chave PIX copiada!');
-                                  }}
-                                  className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium transition-colors"
-                                >
-                                  <Copy className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
                     )}
