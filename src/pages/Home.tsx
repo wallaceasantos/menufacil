@@ -340,7 +340,7 @@ export default function Home() {
             <img
               src="/logo.png"
               alt="MenuFácil"
-              className="h-10 w-auto object-contain"
+              className="h-14 w-auto object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none'
                 const fallback = (e.target as HTMLImageElement).nextElementSibling
@@ -1159,7 +1159,7 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <img src="/logo.png" alt="MenuFácil" className="h-6 w-auto object-contain"
+                <img src="/logo.png" alt="MenuFácil" className="h-8 w-auto object-contain"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                 <Utensils className="w-6 h-6 text-orange-500 logo-fallback" />
                 <span className="font-bold text-xl text-slate-900 dark:text-white">
