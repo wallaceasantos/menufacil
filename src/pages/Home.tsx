@@ -340,7 +340,7 @@ export default function Home() {
             <img
               src="/logo.png"
               alt="MenuFácil"
-              className="h-14 w-auto object-contain"
+              className="h-20 w-auto object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none'
                 const fallback = (e.target as HTMLImageElement).nextElementSibling
