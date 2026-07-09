@@ -336,7 +336,18 @@ export default function Home() {
       <nav className="fixed top-0 w-full z-40 bg-white/80 dark:bg-[#0A0A0B]/80 backdrop-blur-xl border-b border-slate-200 dark:border-[#262626]">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.3)]">
+            {/* Logo — substitua o arquivo /public/logo.png pela sua marca */}
+            <img
+              src="/logo.png"
+              alt="MenuFácil"
+              className="h-10 w-auto object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none'
+                const fallback = (e.target as HTMLImageElement).nextElementSibling
+                if (fallback) (fallback as HTMLElement).style.display = 'flex'
+              }}
+            />
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.3)] hidden">
               <Utensils className="w-6 h-6 text-slate-900 dark:text-white" />
             </div>
             <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
@@ -1150,7 +1161,9 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <Utensils className="w-6 h-6 text-orange-500" />
+                <img src="/logo.png" alt="MenuFácil" className="h-6 w-auto object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                <Utensils className="w-6 h-6 text-orange-500 logo-fallback" />
                 <span className="font-bold text-xl text-slate-900 dark:text-white">
                   MenuFácil
                 </span>
