@@ -121,10 +121,6 @@ app.use('/api', generalLimiter)
 
 app.use('/api', routes)
 
-app.get('/', (_req, res) => {
-  res.json({ status: 'ok', service: 'MenuFácil API', timestamp: new Date().toISOString() })
-})
-
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
