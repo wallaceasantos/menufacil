@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { User, Bell, Link as LinkIcon, Palette, Save, CreditCard, Smartphone, Receipt, CheckCircle2, ExternalLink, Loader2, Star } from 'lucide-react';
+import { User, Bell, Link as LinkIcon, Palette, Save, CreditCard, Smartphone, Receipt, CheckCircle2, ExternalLink, Loader2, Star, QrCode } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { PlanBadge } from '../../components/PlanBadge';
@@ -258,55 +258,38 @@ export function Settings() {
               {activeTab === 'integrations' && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Formas de Pagamento</h2>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Integrações</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 border border-slate-200 dark:border-[#262626] rounded-xl flex items-start gap-4">
+                      <div onClick={() => navigate('/dashboard/payments')}
+                        className="p-4 border border-emerald-200 dark:border-emerald-500/20 rounded-xl flex items-start gap-4 cursor-pointer hover:border-emerald-400 transition-colors">
                         <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                          <CreditCard className="w-5 h-5" />
+                          <QrCode className="w-5 h-5" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-slate-900 dark:text-white">Chave PIX</h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Receba pagamentos diretos via PIX.</p>
-                          <input
-                            type="text"
-                            placeholder="Sua chave PIX"
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#262626] rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                          />
+                          <h3 className="font-semibold text-slate-900 dark:text-white">PIX via Mercado Pago</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">QR Code automático. Gerencie as formas de pagamento.</p>
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium mt-1">
+                            <CheckCircle2 className="w-3 h-3" /> Conectado
+                          </span>
                         </div>
                       </div>
-                      <div className="p-4 border border-slate-200 dark:border-[#262626] rounded-xl flex items-start gap-4 opacity-50 grayscale">
-                        <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-600 flex items-center justify-center flex-shrink-0">
-                          <CreditCard className="w-5 h-5" />
+                      <div onClick={() => navigate('/dashboard/whatsapp')}
+                        className="p-4 border border-slate-200 dark:border-[#262626] rounded-xl flex items-start gap-4 cursor-pointer hover:border-green-400 transition-colors">
+                        <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-600 flex items-center justify-center flex-shrink-0">
+                          <Smartphone className="w-5 h-5" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-slate-900 dark:text-white">Mercado Pago</h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Em breve.</p>
-                          <button type="button" disabled className="px-3 py-1.5 bg-slate-100 dark:bg-[#262626] text-slate-500 rounded-lg text-sm font-medium">
-                            Conectar Conta
-                          </button>
+                          <h3 className="font-semibold text-slate-900 dark:text-white">WhatsApp Business</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Notificações automáticas de status do pedido.</p>
+                          <span className="inline-flex items-center gap-1 text-xs text-blue-600 font-medium mt-1">
+                            Configurar →
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <hr className="border-slate-200 dark:border-[#262626]" />
-
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Comunicação</h2>
-                    <div className="p-4 border border-slate-200 dark:border-[#262626] rounded-xl flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-600 flex items-center justify-center flex-shrink-0">
-                        <Smartphone className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-slate-900 dark:text-white">WhatsApp Business</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Envie mensagens automáticas sobre o status do pedido para seus clientes.</p>
-                        <button type="button" className="px-4 py-2 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-lg text-sm font-semibold transition-colors">
-                          Conectar WhatsApp
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               )}
 
               {activeTab === 'appearance' && (
