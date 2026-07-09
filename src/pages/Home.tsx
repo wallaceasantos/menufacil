@@ -339,7 +339,7 @@ export default function Home() {
             {/* Logo — substitua o arquivo /public/logo.png pela sua marca */}
             <img
               src="/logo.png"
-              
+              alt="MenuFácil"
               className="h-10 w-auto object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none'
@@ -350,9 +350,7 @@ export default function Home() {
             <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.3)] hidden">
               <Utensils className="w-6 h-6 text-slate-900 dark:text-white" />
             </div>
-            <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
-              Menu<span className="text-orange-500">Fácil</span>
-            </span>
+            
           </div>
 
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 dark:text-slate-300">
