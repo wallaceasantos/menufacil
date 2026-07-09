@@ -336,11 +336,11 @@ export default function Home() {
       <nav className="fixed top-0 w-full z-40 bg-white/80 dark:bg-[#0A0A0B]/80 backdrop-blur-xl border-b border-slate-200 dark:border-[#262626]">
         <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex flex-col items-start">
+            <div className="flex flex-col items-start -space-y-0.5">
               <img
                 src="/logo.png"
                 alt="MenuFácil"
-                className="h-24 w-auto object-contain"
+                className="h-20 w-auto object-contain"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none'
                   const fallback = (e.target as HTMLImageElement).nextElementSibling
@@ -350,7 +350,7 @@ export default function Home() {
               <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.3)] hidden">
                 <Utensils className="w-6 h-6 text-slate-900 dark:text-white" />
               </div>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 tracking-wide -mt-0.5">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 tracking-wide">
                 Facilitando a vida de quem alimenta o mundo
               </span>
             </div>
