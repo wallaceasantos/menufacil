@@ -339,7 +339,7 @@ export default function Home() {
             {/* Logo — substitua o arquivo /public/logo.png pela sua marca */}
             <img
               src="/logo.png"
-              alt="MenuFácil"
+              
               className="h-10 w-auto object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none'
