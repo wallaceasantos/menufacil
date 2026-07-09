@@ -941,7 +941,12 @@ export default function PublicStore() {
                             </p>
                           )}
 
-                          {storeInfo.paymentMethods.pixKey && (
+                          {storeInfo.paymentMethods.pixQrCodeImage ? (
+                            <div className="flex justify-center">
+                              <img src={storeInfo.paymentMethods.pixQrCodeImage} alt="QR Code PIX"
+                                className="w-48 h-48 rounded-xl border border-purple-200 dark:border-purple-800/30" />
+                            </div>
+                          ) : storeInfo.paymentMethods.pixKey ? (
                             <div>
                               <label className="text-xs font-medium text-slate-600 dark:text-slate-400 block mb-1">
                                 Chave PIX ({storeInfo.paymentMethods.pixKeyType?.toUpperCase()})
@@ -956,7 +961,7 @@ export default function PublicStore() {
                                 </button>
                               </div>
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     )}

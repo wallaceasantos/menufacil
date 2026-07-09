@@ -165,6 +165,7 @@ router.get('/:slug', async (req, res, next) => {
         pixBeneficiary: paymentConfig?.pixBeneficiary || undefined,
         pixBank: paymentConfig?.pixBank || undefined,
         pixOnDelivery: paymentConfig?.pixOnDelivery ?? false,
+        pixQrCodeImage: paymentConfig?.pixQrCodeImage || undefined,
         pixInstructions: paymentConfig?.instructions || undefined,
         cash: paymentConfig?.cashEnabled ?? true,
         card: paymentConfig?.cardEnabled ?? true,

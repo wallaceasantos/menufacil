@@ -516,6 +516,7 @@ model PaymentConfig {
   cashEnabled       Boolean?  @default(true) @map("cash_enabled")
   cardEnabled       Boolean?  @default(true) @map("card_enabled")
   pixOnDelivery     Boolean?  @default(false) @map("pix_on_delivery")
+  pixQrCodeImage    String?   @map("pix_qr_code_image")
   instructions      String?   @map("instructions")
   createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)

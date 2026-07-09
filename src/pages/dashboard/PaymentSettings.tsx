@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
-import { Banknote, CreditCard, QrCode, Save, Store } from 'lucide-react'
+import { Banknote, CreditCard, QrCode, Save, Store, Upload, Image, Trash2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { apiWithTenant } from '../../lib/api'
+import { apiWithTenant, uploadImage } from '../../lib/api'
 import { getTenantSlug } from '../../data/tenantStorage'
 
 const KEY_TYPE_LABELS: Record<string, string> = {
@@ -18,13 +18,14 @@ interface PaymentConfig {
   pixBeneficiary: string
   pixBank: string
   pixOnDelivery: boolean
+  pixQrCodeImage: string | null
   instructions: string
 }
 
 const defaultConfig: PaymentConfig = {
   pixEnabled: true, cashEnabled: true, cardEnabled: true,
   pixKey: '', pixKeyType: 'cpf', pixBeneficiary: '', pixBank: '',
-  pixOnDelivery: false, instructions: '',
+  pixOnDelivery: false, instructions: '', pixQrCodeImage: null,
 }
 
 export function PaymentSettings() {
@@ -43,6 +44,7 @@ export function PaymentSettings() {
           pixKey: data.pixKey || '', pixKeyType: data.pixKeyType || 'cpf',
           pixBeneficiary: data.pixBeneficiary || '', pixBank: data.pixBank || '',
           pixOnDelivery: data.pixOnDelivery ?? false, instructions: data.instructions || '',
+          pixQrCodeImage: data.pixQrCodeImage || null,
         })
       })
       .catch(() => {})
@@ -157,6 +159,32 @@ export function PaymentSettings() {
                 placeholder="Nubank, Itaú..."
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#262626] rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ou envie uma imagem do QR Code PIX</label>
+            <p className="text-xs text-slate-400 mb-2">Print do QR code do seu app do banco. O cliente escaneia direto.</p>
+            {config.pixQrCodeImage ? (
+              <div className="relative inline-block">
+                <img src={config.pixQrCodeImage} alt="QR Code PIX" className="w-40 h-40 rounded-xl border border-slate-200 dark:border-[#262626] object-cover" />
+                <button type="button" onClick={() => setConfig({ ...config, pixQrCodeImage: null })}
+                  className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors">
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center gap-2 p-8 border-2 border-dashed border-slate-300 dark:border-[#3f3f46] rounded-xl cursor-pointer hover:border-orange-400 transition-colors">
+                <Upload className="w-5 h-5 text-slate-400" />
+                <span className="text-sm text-slate-500">Clique para enviar o QR Code</span>
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file || !tenantSlug) return
+                    const url = await uploadImage(file, tenantSlug)
+                    setConfig({ ...config, pixQrCodeImage: url })
+                  }} />
+              </label>
+            )}
           </div>
 
           <div className="pt-2">

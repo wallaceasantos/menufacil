@@ -29,6 +29,7 @@ router.get('/config', async (req, res, next) => {
         cashEnabled: true,
         cardEnabled: true,
         pixOnDelivery: false,
+        pixQrCodeImage: null,
         instructions: 'Envie o comprovante pelo WhatsApp após o pagamento.',
       })
       return
@@ -43,6 +44,7 @@ router.get('/config', async (req, res, next) => {
       cashEnabled: config.cashEnabled ?? true,
       cardEnabled: config.cardEnabled ?? true,
       pixOnDelivery: config.pixOnDelivery ?? false,
+      pixQrCodeImage: config.pixQrCodeImage || null,
       instructions: config.instructions || 'Envie o comprovante pelo WhatsApp após o pagamento.',
     })
   } catch (err) {
@@ -66,11 +68,12 @@ router.put('/config', async (req, res, next) => {
       cashEnabled,
       cardEnabled,
       pixOnDelivery,
+      pixQrCodeImage,
       instructions,
     } = req.body
 
-    if (pixEnabled && !pixKey?.trim()) {
-      res.status(400).json({ error: 'Informe a chave PIX para habilitar essa forma de pagamento' })
+    if (pixEnabled && !pixKey?.trim() && !pixQrCodeImage?.trim()) {
+      res.status(400).json({ error: 'Informe a chave PIX ou envie uma imagem do QR Code' })
       return
     }
 
@@ -85,6 +88,7 @@ router.put('/config', async (req, res, next) => {
         cashEnabled: cashEnabled ?? true,
         cardEnabled: cardEnabled ?? true,
         pixOnDelivery: pixOnDelivery ?? false,
+        pixQrCodeImage: pixQrCodeImage?.trim() || null,
         instructions: instructions?.trim() || null,
       },
       create: {
@@ -97,6 +101,7 @@ router.put('/config', async (req, res, next) => {
         cashEnabled: cashEnabled ?? true,
         cardEnabled: cardEnabled ?? true,
         pixOnDelivery: pixOnDelivery ?? false,
+        pixQrCodeImage: pixQrCodeImage?.trim() || null,
         instructions: instructions?.trim() || null,
       },
     })
@@ -110,6 +115,7 @@ router.put('/config', async (req, res, next) => {
       cashEnabled: config.cashEnabled,
       cardEnabled: config.cardEnabled,
       pixOnDelivery: config.pixOnDelivery,
+      pixQrCodeImage: config.pixQrCodeImage,
       instructions: config.instructions,
     })
   } catch (err) {
