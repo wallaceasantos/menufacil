@@ -47,6 +47,7 @@ MP_LOCAL_MODE=true          # simulates payments without real MP API
 VAPID_PUBLIC_KEY=...
 VAPID_PRIVATE_KEY=...
 APP_URL=http://localhost:3000
+ADDITIONAL_CORS_ORIGINS=    # optional extra domains (comma-separated)
 ```
 
 **Important:** `MP_LOCAL_MODE=true` bypasses Mercado Pago API. All payment flows simulate locally. `MP_TEST_PRICE` overrides the Completo plan price for testing.
@@ -54,20 +55,21 @@ APP_URL=http://localhost:3000
 ## Folder Structure
 
 ```
-prisma/schema.prisma          — single source of truth, 33 models
+prisma/schema.prisma          — single source of truth, 34 models
 public/
   sw.js                       — service worker (push + cache)
   manifest.json               — PWA manifest
   icon-192.svg                — PWA icon
+  logo.png                    — site logo (optional, loaded by Home/dashboards/public store)
 src/
-  server.ts                   — Express app, cron, graceful shutdown
+  server.ts                   — Express app, cron, graceful shutdown, static SPA serving
   main.tsx                    — React entry + SW registration
   App.tsx                     — routes + lazy pages
   routes/                     — 23 route files, all registered in index.ts
     index.ts                  — master router (all /api/* mounts)
-    auth.ts                   — register, login, me, register-tenant (with invite)
+    auth.ts                   — register, login, me, register-tenant (with invite token)
     tenants.ts                — CRUD tenants
-    public.ts                 — storefront, orders, tracking, PIX, ratings
+    public.ts                 — storefront, orders, tracking, PIX, ratings, coupon validation
     menu.ts                   — categories + products CRUD
     orders.ts                 — list, detail, status change, bulk
     inventory.ts              — items, batches, movements, suppliers, PO
@@ -76,21 +78,21 @@ src/
     reports.ts                — analytics with 10 dimensions, CSV export
     customers.ts              — CRM CRUD, stats, search
     deliveryZones.ts          — zones by radius/CEP/neighborhood, fee calc
-    events.ts                 — SSE stream (token in query params)
+    events.ts                 — SSE stream (token in query params, admin heartbeat)
     printer.ts                — ESC/POS formatting, print queue, auto-print
     discounts.ts              — coupon CRUD, validation
     push.ts                   — web push subscribe/unsubscribe
-    team.ts                   — members CRUD, invite, accept
-    testimonials.ts           — auto-generated testimonials from real data
+    team.ts                   — members CRUD, invite, accept (with existing account)
+    testimonials.ts           — auto-generated testimonials from real tenant data
     support.ts                — tickets, messages, attachments
     whatsapp.ts               — WhatsApp config, test message
-    payments.ts               — PIX/cash/card config
+    payments.ts               — PIX/cash/card config + pixQrCodeImage upload
     invoices.ts               — invoice CRUD
     upload.ts                 — Cloudinary image upload
     admin.ts                  — tenant list, finance, announcements, reset-db
   lib/
     prisma.ts                 — PrismaClient singleton (import from here)
-    api.ts                    — client-side fetch wrappers (api, apiWithTenant, etc.)
+    api.ts                    — client-side fetch wrappers (api, apiWithTenant, apiWithTenantBlob)
     mercadopago.ts            — MP API client (payments, customers, cards, preapproval)
     escpos.ts                 — ESC/POS receipt formatter
     eventBus.ts               — in-memory pub/sub for SSE
@@ -99,7 +101,7 @@ src/
     cache.ts                  — simple Map-based cache with TTL
     planLog.ts                — log plan changes
     jwt.ts / password.ts      — JWT sign/verify, bcrypt hash/verify
-    whatsapp.ts               — send WhatsApp notifications
+    whatsapp.ts               — send WhatsApp notifications (includes tracking link)
     email.ts                  — Nodemailer email sender
     cloudinary.ts             — Cloudinary upload helper
     menuValidation.ts         — server-side order validation
@@ -122,13 +124,13 @@ src/
   data/
     plans.ts                  — PLAN_FEATURES, hasFeature(), formatPlanPrice()
     tenantStorage.ts          — getTenantSlug(user)
-  components/                 — 16 reusable components
+  components/                 — 17 reusable components
   pages/
     dashboard/                — 17 dashboard pages (Overview, Orders, Menu, etc.)
     admin/                    — AdminDashboard, InvoiceManager
-    Home.tsx                  — landing page
-    PublicStore.tsx           — customer-facing menu + checkout
-    TrackingPage.tsx          — order tracking (SSE, QR, rating)
+    Home.tsx                  — landing page (with customizable logo)
+    PublicStore.tsx           — customer-facing menu + checkout (manual PIX key + QR image)
+    TrackingPage.tsx          — order tracking (SSE, QR, rating, PIX status)
     RegisterPage.tsx          — invite registration
     ProductFeature.tsx        — feature pages (marketing)
   types/index.ts              — ApiUser, ApiTenant, ApiProduct, etc.
@@ -136,9 +138,9 @@ src/
 
 ## Database (Prisma)
 
-**33 models.** Key ones:
+**34 models.** Key ones:
 
-- **Tenant** — core. slug, plan (basico/completo), paymentStatus, subscriptionStatus, cardLastFour, nextBillingDate, coordinates, customDomain, platformRating
+- **Tenant** — core. slug, plan (basico/completo), paymentStatus, subscriptionStatus, cardLastFour, nextBillingDate, coordinates, customDomain, platformRating, domainVerified
 - **User** — role (admin/tenant), tenantRole (dono/atendente/cozinha/entregador), tenantId
 - **Order** — mpPaymentId/Status/PixPayload/QrCode, rating/comment/ratedAt, customerPhone
 - **Product** — productType (simple/combo/buildable), autoDeductStock
@@ -146,8 +148,9 @@ src/
 - **DeliveryZone** — zoneType (radius/cep/neighborhood), fee, priority
 - **PrinterConfig / PrintJob** — thermal printer queue
 - **Discount** — coupon codes (percentage/fixed)
-- **Invite** — team invites with token
+- **Invite** — team invites with token, expires in 7 days
 - **PushSubscription** — web push endpoints
+- **PaymentConfig** — PIX key, QR code image, cash/card toggles
 - **PlanChangeLog** — audit trail
 
 **Important field notes:**
@@ -171,7 +174,7 @@ src/
 - `cozinha` — orders:rw
 - `entregador` — orders:r
 
-**Sidebar filtering:** `DashboardLayout.tsx` uses `allNavItems.filter(item => item.roles.includes(tenantRole))`
+**Sidebar filtering:** `DashboardLayout.tsx` uses `allNavItems.filter(item => item.roles.includes(tenantRole) && item.plans.includes(userPlan))`
 
 **Public routes (no auth):** `/api/loja/*`, `/api/mp/webhook`, `/api/domain-check`, `/api/testimonials`, `/api/events/stream` (token in query params), `/register`
 
@@ -179,19 +182,16 @@ src/
 
 ```ts
 // src/data/plans.ts — single source of truth
-PLANS.basico.price   // 0 (Grátis)
-PLANS.completo.price // 79.90
+PLANS.basico.price   // 0 (Grátis) — cardápio + WhatsApp
+PLANS.completo.price // 79.90 — tudo incluso
 
 // Check feature access
 hasFeature('stock-control', user?.plan) // true only for completo
-
-// Frontend component
-<FeatureGate feature="stock-control">
-  <InventoryPage />
-</FeatureGate>
 ```
 
-12 features in `PLAN_FEATURES`. Some shared between plans, most exclusive to Completo.
+**Sidebar plan filtering:** Each nav item has `plans: ['basico', 'completo']` or `plans: ['completo']`. Grátis vê 9 itens, Completo vê todos.
+
+**Key plan exclusives:** Estoque, Relatórios, Áreas de Entrega, Impressão, Cupons, Equipe, Clientes, Pedidos (painel), WhatsApp config, order-status-management.
 
 ## API Patterns
 
@@ -206,33 +206,59 @@ hasFeature('stock-control', user?.plan) // true only for completo
 
 - **`eventBus`** (`src/lib/eventBus.ts`) — in-memory pub/sub, one per tenant
 - **SSE** (`src/routes/events.ts`) — `GET /api/events/stream?token=...&tenantSlug=...`
+- Admin SSE: connects without tenant, heartbeat only
 - Events emitted: `new_order`, `order_status_changed`, `inventory_low`
 - **NotificationContext** (`src/contexts/NotificationContext.tsx`) — manages SSE connection, toast queue, notification list
 - **NotificationCenter** (`src/components/NotificationCenter.tsx`) — bell icon with dropdown + push toggle
-- **Web push** (`src/lib/webPush.ts` + `src/routes/push.ts`) — triggered via `notifyPush()` on new orders/status changes
+- **Web push** (`src/lib/webPush.ts` + `src/routes/push.ts`) — triggered via `notifyPush()` on new orders/status changes/stock alerts
 
 ## Mercado Pago Integration
 
 - **`src/lib/mercadopago.ts`** — fetch wrapper with idempotency keys
 - **`src/routes/mp.ts`** — checkout endpoints, webhook handler, subscription management
 - **Local mode** (`MP_LOCAL_MODE=true`): bypasses all MP API calls, generates fake payment IDs
-- **Webhook** (`POST /api/mp/webhook`): receives raw body (special parser in server.ts)
-- **PIX for orders**: generated via `mp.createPayment({ payment_method_id: 'pix' })`, stored on `Order.mpPaymentId/mpPixPayload/mpPixQrCode`
-- **Subscriptions**: card checkout now creates `mp.createPreapproval()` for recurring billing
+- **Webhook** (`POST /api/mp/webhook`): receives raw body (special parser in server.ts); detects if payment is for order (UUID) or tenant (subscription)
+- **PIX for orders**: generated via `mp.createPayment({ payment_method_id: 'pix' })`, stored on `Order.mpPaymentId/mpPixPayload/mpPixQrCode` (Text fields, not Varchar)
+- **Subscriptions**: card checkout creates `mp.createPreapproval()` for recurring billing
 - **`MP_TEST_PRICE`**: overrides plan price for testing
+- **Manual PIX**: each tenant can also set a manual PIX key or upload a QR code image (`PaymentConfig.pixQrCodeImage`)
 
 ## Billing Cron
 
-`setInterval` runs every hour in `server.ts`. In `MP_LOCAL_MODE`:
-1. Finds tenants with `subscriptionStatus='authorized'` and `nextBillingDate <= today` → simulates charge
-2. Finds tenants 31+ days overdue → auto-downgrade to `basico`
-3. In production, only logs — no auto-processing
+`setInterval` runs every hour in `server.ts`:
+1. **Simulated billing** (`MP_LOCAL_MODE` only): charges tenants with `nextBillingDate <= today`
+2. **Overdue detection** (always runs): finds tenants 31+ days past `lastBillingDate` → auto-downgrade to `basico`
+3. At 3+ days: sets `paymentStatus = 'overdue'`
+
+## Logo Customization
+
+Place a file `public/logo.png` in the project root. The system loads it in:
+- Home page navbar + footer
+- Dashboard sidebar header (lojista)
+- Admin dashboard sidebar header
+- Public store page (tenant's own logo, configured in StoreSettings)
+
+All locations have automatic fallback to the default fork icon if `logo.png` doesn't exist.
+
+## Payment Flow
+
+**Manual PIX (per tenant):**
+- Tenant configures PIX key OR uploads QR code image in Pagamentos
+- Customer selects PIX at checkout → sees key (with copy button) or QR code image
+- Customer pays via bank app, sends comprovante via WhatsApp
+- No automatic verification — tenant confirms manually
+
+**Automatic PIX (Mercado Pago):**
+- `POST /api/loja/:slug/orders` → if `paymentMethod === 'pix'`, generates MP payment
+- Stores `mpPaymentId`, `mpPixPayload`, `mpPixQrCode` on Order
+- Webhook confirms payment → updates `Order.mpPaymentStatus`
+- Tracking page shows QR code + simulate button in dev mode
 
 ## Code Conventions
 
 - **No comments** unless absolutely necessary (user preference)
 - **ESM imports** — no `require()`
-- **Relative paths** — `../../contexts/AuthContext` from components
+- **Relative paths** — `'../contexts/AuthContext'` from components
 - **Express route handlers**: `(req, res, next) => { try {...} catch(err) { next(err) } }`
 - **State naming**: `setX` pattern, `useState` at top of component
 - **Toast**: `import toast from 'react-hot-toast'` — use `toast.success()`, `toast.error()`
@@ -248,7 +274,7 @@ hasFeature('stock-control', user?.plan) // true only for completo
 4. **Teste**: não há testes automatizados. Mudanças devem ser testadas manualmente no `localhost:3000`/`localhost:3001`
 5. **MP_LOCAL_MODE=true** no .env atual — todas as chamadas Mercado Pago são simuladas
 6. **SSE timeout**: `server.timeout = 0` (infinito) para conexões SSE
-7. **Sidebar**: itens filtrados por `tenantRole`. Dono vê tudo, cozinha só vê Pedidos
+7. **Sidebar**: itens filtrados por `tenantRole` + `plan`. Grátis vê 9 itens, Completo vê 17.
 8. **Import paths**: de `src/components/` para `src/contexts/` = `'../contexts/...'` (1 nível acima, não 2)
 9. **AnimatePresence** do framer-motion: filhos diretos precisam de `key` prop
 10. **Rotas públicas**: não exigem auth — `/api/loja/*`, `/api/testimonials`, `/register`
@@ -260,35 +286,37 @@ hasFeature('stock-control', user?.plan) // true only for completo
 | Prisma generate EPERM | `taskkill /F /IM node.exe` → `npx prisma generate` |
 | `order.items.split is not a function` | API retorna array, não string. Usar `Array.isArray()` check |
 | SSE 401 | Token deve ser passado como query param `?token=...&tenantSlug=...` |
-| Webhook 500 no MP | Modo local ativo, não chama API real |
+| Admin SSE 401 | Admin não tem tenant — events.ts trata separadamente com heartbeat |
 | Sidebar items overlapping footer | Usar `flex-1 overflow-y-auto` no nav, `shrink-0` no footer |
 | AnimatePresence duplicate key | Adicionar `key="unique-id"` no filho direto |
-| Admin SSE 401 | Admin não tem tenant — events.ts trata separadamente com heartbeat |
+| PIX column too long | `mpPixPayload` e `mpPixQrCode` são `@db.Text`, não `VarChar(500)` |
+| CORS warning | Adicionar domínio extra em `ADDITIONAL_CORS_ORIGINS` no Railway |
+| SPA not serving on Railway | Verificar `start:prod` script tem `vite build`, health check path = `/health` |
 
-## Railway Deployment — Status Atual
+## Railway Deployment
 
-Deploy fullstack no Railway: backend + frontend no mesmo serviço, PostgreSQL como serviço separado.
+Deploy fullstack no Railway: backend + frontend no mesmo serviço.
 
-- **Domínio público:** `https://menufacil-production.up.railway.app`
-- **Banco de dados:** PostgreSQL no Railway (`postgres.railway.internal` internamente; proxy público disponível)
-- **Build:** `npm run build` gera `dist/`
-- **Start:** `npm start` → `vite build && tsx src/server.ts`
-- **Static serving:** Express serve `dist/` + SPA fallback em produção (`NODE_ENV=production`)
+- **Domínio:** `https://menufacil.up.railway.app`
+- **Build:** `vite build` (pelo script `start:prod`)
+- **Start:** `npm run start:prod` → `vite build && prisma db push && tsx src/server.ts`
+- **Static serving:** Express serve `dist/` + SPA fallback em produção
+- **Health check path:** `/health`
 - **Repositório:** `https://github.com/wallaceasantos/menufacil.git` branch `master`
 
-### Variáveis de ambiente importantes no Railway
+### Variáveis no Railway
 
 ```
 NODE_ENV=production
 PORT=8080
-APP_URL=https://menufacil-production.up.railway.app
+APP_URL=https://menufacil.up.railway.app
 VITE_API_URL=/api
 JWT_SECRET=<obrigatório, forte>
 DATABASE_URL=<interna do Railway>
-MP_LOCAL_MODE=false          # false para pagamentos reais
-MP_ACCESS_TOKEN=<token de produção do Mercado Pago>
-MP_WEBHOOK_SECRET=<senha do webhook do MP>
-MP_WEBHOOK_URL=https://menufacil-production.up.railway.app/api/mp/webhook
+MP_LOCAL_MODE=false
+MP_ACCESS_TOKEN=<token de produção>
+MP_WEBHOOK_SECRET=<senha do webhook>
+MP_WEBHOOK_URL=https://menufacil.up.railway.app/api/mp/webhook
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
@@ -297,15 +325,5 @@ VAPID_PRIVATE_KEY=...
 ```
 
 ### Admin padrão
-
-- Email: `admin@menufacil.com`
-- Senha: `S100cem%`
-- **Resetar banco:** Admin Dashboard → Finanças → "Zona de Perigo" → Resetar Banco (limpa tudo, recria admin)
-
-### Notas de segurança
-
-- `JWT_SECRET` é obrigatório em produção.
-- Helmet + rate limiting + CORS restrito estão ativos.
-- Rota `/admin/reset-db` disponível apenas para admin autenticado.
-- `@prisma/client` está em `dependencies` (não devDependencies).
-- `.env` não é commitado (`.gitignore` cobre `.env*`).
+- Email: `admin@menufacil.com` / Senha: `S100cem%`
+- Resetar banco: Admin Dashboard → Finanças → Zona de Perigo → Resetar Banco
