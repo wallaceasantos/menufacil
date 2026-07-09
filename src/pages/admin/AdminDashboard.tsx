@@ -274,7 +274,7 @@ export function AdminDashboard() {
                   const fb = document.querySelector('.admin-logo-fallback')
                   if (fb) (fb as HTMLElement).style.display = 'block'
                 }} />
-              <h1 className="text-2xl font-bold text-orange-600 dark:text-orange-500 admin-logo-fallback">MenuFácil<span className="text-slate-900 dark:text-white text-sm ml-1 font-normal uppercase tracking-wider">Admin</span></h1>
+              <h1 className="text-2xl font-bold text-orange-600 dark:text-orange-500 admin-logo-fallback"><span className="text-slate-900 dark:text-white text-sm ml-1 font-normal uppercase tracking-wider">Admin</span></h1>
             </div>
             <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-500 hover:text-slate-900 dark:hover:text-white">
               <XCircle className="w-6 h-6" />
