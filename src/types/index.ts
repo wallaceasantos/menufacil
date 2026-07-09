@@ -30,6 +30,7 @@ export interface PaymentMethods {
   pixBeneficiary?: string;
   pixBank?: string;
   pixOnDelivery?: boolean;
+  pixQrCodeImage?: string | null;
   pixInstructions?: string;
   cash: boolean;
   card: boolean;
