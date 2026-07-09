@@ -127,9 +127,9 @@ export function DashboardLayout() {
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none'
                 const fb = document.querySelector('.logo-fallback')
-                if (fb) (fb as HTMLElement).style.display = 'flex'
+                if (fb) (fb as HTMLElement).classList.remove('hidden')
               }} />
-            <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center logo-fallback">
+            <div className="w-8 h-8 bg-orange-600 rounded-lg items-center justify-center logo-fallback hidden">
               <UtensilsCrossed className="w-5 h-5 text-white" />
             </div>
           </Link>
