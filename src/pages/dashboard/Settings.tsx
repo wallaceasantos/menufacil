@@ -290,6 +290,7 @@ export function Settings() {
                   </div>
 
                   <hr className="border-slate-200 dark:border-[#262626]" />
+                </div>
               )}
 
               {activeTab === 'appearance' && (
