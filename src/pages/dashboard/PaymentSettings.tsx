@@ -1,20 +1,36 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
-import { Banknote, CreditCard, QrCode, Save, Store, CheckCircle2 } from 'lucide-react'
+import { Banknote, CreditCard, QrCode, Save, Store } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { api, apiWithTenant } from '../../lib/api'
+import { apiWithTenant } from '../../lib/api'
 import { getTenantSlug } from '../../data/tenantStorage'
+
+const KEY_TYPE_LABELS: Record<string, string> = {
+  cpf: 'CPF', phone: 'Telefone', email: 'E-mail', random: 'Aleatória',
+}
 
 interface PaymentConfig {
   pixEnabled: boolean
   cashEnabled: boolean
   cardEnabled: boolean
+  pixKey: string
+  pixKeyType: string
+  pixBeneficiary: string
+  pixBank: string
+  pixOnDelivery: boolean
+  instructions: string
+}
+
+const defaultConfig: PaymentConfig = {
+  pixEnabled: true, cashEnabled: true, cardEnabled: true,
+  pixKey: '', pixKeyType: 'cpf', pixBeneficiary: '', pixBank: '',
+  pixOnDelivery: false, instructions: '',
 }
 
 export function PaymentSettings() {
   const { user } = useAuth()
   const tenantSlug = getTenantSlug(user)
-  const [config, setConfig] = useState<PaymentConfig>({ pixEnabled: true, cashEnabled: true, cardEnabled: true })
+  const [config, setConfig] = useState<PaymentConfig>(defaultConfig)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -22,13 +38,12 @@ export function PaymentSettings() {
     if (!tenantSlug) return
     apiWithTenant<any>('/payments/config', tenantSlug)
       .then((data) => {
-        if (data) {
-          setConfig({
-            pixEnabled: data.pixEnabled ?? true,
-            cashEnabled: data.cashEnabled ?? true,
-            cardEnabled: data.cardEnabled ?? true,
-          })
-        }
+        if (data) setConfig({
+          pixEnabled: data.pixEnabled ?? true, cashEnabled: data.cashEnabled ?? true, cardEnabled: data.cardEnabled ?? true,
+          pixKey: data.pixKey || '', pixKeyType: data.pixKeyType || 'cpf',
+          pixBeneficiary: data.pixBeneficiary || '', pixBank: data.pixBank || '',
+          pixOnDelivery: data.pixOnDelivery ?? false, instructions: data.instructions || '',
+        })
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -38,24 +53,20 @@ export function PaymentSettings() {
     e.preventDefault()
     setSaving(true)
     try {
-      await apiWithTenant('/payments/config', tenantSlug, {
-        method: 'PUT',
-        body: JSON.stringify(config),
-      })
-    } catch (err) {
-      console.error(err)
-    } finally { setSaving(false) }
+      await apiWithTenant('/payments/config', tenantSlug, { method: 'PUT', body: JSON.stringify(config) })
+    } catch (err) { console.error(err) }
+    finally { setSaving(false) }
   }
 
   if (loading) {
-    return <div className="text-center py-12 text-slate-500 dark:text-slate-400">Carregando configurações...</div>
+    return <div className="text-center py-12 text-slate-500 dark:text-slate-400">Carregando...</div>
   }
 
   return (
     <div className="space-y-6 min-h-full bg-slate-50 dark:bg-[#09090b]">
       <div>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pagamentos</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Configure como seus clientes podem pagar</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Configure as formas de pagamento e sua chave PIX</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
@@ -66,7 +77,7 @@ export function PaymentSettings() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <label className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-[#09090b] border border-emerald-200 dark:border-emerald-500/20 rounded-xl cursor-pointer hover:border-orange-500/50 transition-colors">
+            <label className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#262626] rounded-xl cursor-pointer hover:border-orange-500/50 transition-colors">
               <input type="checkbox" checked={config.pixEnabled}
                 onChange={(e) => setConfig({ ...config, pixEnabled: e.target.checked })}
                 className="mt-0.5 rounded border-slate-300 text-orange-600 focus:ring-orange-500" />
@@ -74,9 +85,8 @@ export function PaymentSettings() {
                 <div className="flex items-center gap-2">
                   <QrCode className="w-4 h-4 text-purple-600 dark:text-purple-500" />
                   <span className="font-medium text-slate-900 dark:text-white text-sm">PIX</span>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 </div>
-                <span className="text-xs text-slate-500 dark:text-slate-400">QR Code via Mercado Pago</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Chave PIX manual</span>
               </div>
             </label>
 
@@ -102,35 +112,71 @@ export function PaymentSettings() {
                   <Banknote className="w-4 h-4 text-green-600 dark:text-green-500" />
                   <span className="font-medium text-slate-900 dark:text-white text-sm">Dinheiro</span>
                 </div>
-                <span className="text-xs text-slate-500 dark:text-slate-400">Pagamento na entrega/retirada</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Na entrega/retirada</span>
               </div>
             </label>
           </div>
         </div>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-200 dark:border-emerald-500/20 rounded-2xl p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <QrCode className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
-            <h2 className="text-lg font-bold text-emerald-800 dark:text-emerald-400">PIX via Mercado Pago</h2>
+        <motion.div animate={{ opacity: config.pixEnabled ? 1 : 0.5, pointerEvents: config.pixEnabled ? 'auto' : 'none' } as any}
+          className="bg-white dark:bg-[#121214] rounded-2xl border border-slate-200 dark:border-[#262626] p-6 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <QrCode className="w-5 h-5 text-purple-600 dark:text-purple-500" />
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Configuração da Chave PIX</h2>
           </div>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>QR Code gerado automaticamente ao finalizar o pedido</span>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tipo de chave</label>
+              <select value={config.pixKeyType}
+                onChange={(e) => setConfig({ ...config, pixKeyType: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#262626] rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+                {Object.entries(KEY_TYPE_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
             </div>
-            <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Pagamento confirmado em tempo real via webhook</span>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Chave PIX</label>
+              <input type="text" value={config.pixKey}
+                onChange={(e) => setConfig({ ...config, pixKey: e.target.value })}
+                placeholder={config.pixKeyType === 'cpf' ? '000.000.000-00' : 'Sua chave PIX'}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#262626] rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
             </div>
-            <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Cliente escaneia e paga em segundos pelo app do banco</span>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome do beneficiário</label>
+              <input type="text" value={config.pixBeneficiary}
+                onChange={(e) => setConfig({ ...config, pixBeneficiary: e.target.value })}
+                placeholder="Nome no comprovante PIX"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#262626] rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
             </div>
-            <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Sem custo adicional — processado pelo MenuFácil</span>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Banco</label>
+              <input type="text" value={config.pixBank}
+                onChange={(e) => setConfig({ ...config, pixBank: e.target.value })}
+                placeholder="Nubank, Itaú..."
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#262626] rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
             </div>
+          </div>
+
+          <div className="pt-2">
+            <label className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#262626] rounded-lg cursor-pointer hover:border-orange-500/50 transition-colors">
+              <input type="checkbox" checked={config.pixOnDelivery}
+                onChange={(e) => setConfig({ ...config, pixOnDelivery: e.target.checked })}
+                className="mt-0.5 rounded border-slate-300 text-orange-600 focus:ring-orange-500" />
+              <div>
+                <span className="font-medium text-slate-900 dark:text-white text-sm block">Permitir PIX na entrega</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Cliente pode pagar com PIX no momento da entrega.</span>
+              </div>
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Instruções para o cliente</label>
+            <textarea rows={3} value={config.instructions}
+              onChange={(e) => setConfig({ ...config, instructions: e.target.value })}
+              placeholder="Envie o comprovante pelo WhatsApp após o pagamento."
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#262626] rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none" />
           </div>
         </motion.div>
 
@@ -138,7 +184,7 @@ export function PaymentSettings() {
           <button type="submit" disabled={saving}
             className="px-6 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold shadow-lg shadow-orange-900/20 transition-all flex items-center gap-2">
             <Save className="w-4 h-4" />
-            {saving ? 'Salvando...' : 'Salvar Configurações'}
+            {saving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
       </form>
