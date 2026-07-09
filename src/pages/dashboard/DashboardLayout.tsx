@@ -120,10 +120,10 @@ export function DashboardLayout() {
         fixed top-0 left-0 z-50 h-screen w-64 bg-white dark:bg-[#121214] border-r border-slate-200 dark:border-[#262626] flex flex-col transform transition-transform duration-300 lg:translate-x-0 lg:static lg:block
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-slate-200 dark:border-[#262626]">
+        <div className="h-24 shrink-0 flex items-center justify-between px-6 border-b border-slate-200 dark:border-[#262626]">
           <Link to="/dashboard" onClick={() => setIsSidebarOpen(false)} className="flex items-center gap-2">
             <img src="/logo.png" alt="MenuFácil"
-              className="h-8 w-auto object-contain"
+              className="h-24 w-auto object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none'
                 const fb = document.querySelector('.logo-fallback')

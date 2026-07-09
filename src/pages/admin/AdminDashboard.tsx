@@ -268,7 +268,7 @@ export function AdminDashboard() {
           <div className="p-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img src="/logo.png" alt="MenuFácil"
-                className="h-8 w-auto object-contain"
+                className="h-24 w-auto object-contain"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none'
                   const fb = document.querySelector('.admin-logo-fallback')
