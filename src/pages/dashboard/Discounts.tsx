@@ -202,7 +202,7 @@ export function Discounts() {
                     <span className="text-xs text-slate-500 dark:text-slate-400">Desconto</span>
                     <span className="text-sm font-extrabold text-orange-600 dark:text-orange-500">{discountLabel}</span>
                   </div>
-                  {d.minOrderAmount > 0 && (
+                  {(d.minOrderAmount ?? 0) > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-500 dark:text-slate-400">Pedido mínimo</span>
                       <span className="text-xs font-bold text-slate-900 dark:text-white">R$ {Number(d.minOrderAmount).toFixed(2).replace('.', ',')}</span>

@@ -27,6 +27,7 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
+import QRCode from 'qrcode';
 import { OrderModal } from '../../components/OrderModal';
 import { PlanBadge } from '../../components/PlanBadge';
 import { FeatureGate } from '../../components/FeatureGate';
@@ -67,12 +68,45 @@ export function Overview() {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [qrGenerating, setQrGenerating] = useState(false);
   const [lockedFeature, setLockedFeature] = useState<string | null>(null);
   const [recentOrders, setRecentOrders] = useState<DashboardOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const storeSlug = useMemo(() => user?.tenantSlug || generateSlug(user?.name || 'minha-loja'), [user]);
 
   const tenantSlug = useMemo(() => getTenantSlug(user), [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function generateQR() {
+      setQrGenerating(true);
+      try {
+        const url = `${window.location.origin}/loja/${storeSlug}`
+        const dataUrl = await QRCode.toDataURL(url, {
+          width: 400,
+          margin: 2,
+          color: { dark: '#f97316', light: '#ffffff' },
+        })
+        if (!cancelled) setQrDataUrl(dataUrl)
+      } catch {
+        // fallback silently
+      } finally {
+        if (!cancelled) setQrGenerating(false)
+      }
+    }
+    generateQR()
+    return () => { cancelled = true }
+  }, [storeSlug])
+
+  const downloadQRCode = () => {
+    if (!qrDataUrl) return
+    const link = document.createElement('a')
+    link.download = `cardapio-${storeSlug}.png`
+    link.href = qrDataUrl
+    link.click()
+    toast.success('QR Code baixado!')
+  }
 
   useEffect(() => {
     async function loadOrders() {
@@ -306,9 +340,9 @@ export function Overview() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#262626] rounded-2xl p-6 flex flex-col justify-between"
+            className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#262626] rounded-2xl p-6 flex flex-col"
           >
-            <div>
+            <div className="flex-1">
               <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-xl flex items-center justify-center mb-6">
                 <QrCode className="w-6 h-6 text-orange-600 dark:text-orange-500" />
               </div>
@@ -316,7 +350,7 @@ export function Overview() {
               <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
                 Compartilhe o link da sua loja ou gere um QR Code para imprimir e colocar nas mesas ou panfletos.
               </p>
-              
+
               <div className="flex items-center gap-2 mb-6 p-3 bg-slate-50 dark:bg-[#09090b] rounded-lg border border-slate-200 dark:border-[#262626]">
                 <LinkIcon className="w-4 h-4 text-slate-400 shrink-0" />
                 <a 
@@ -340,14 +374,23 @@ export function Overview() {
                   {copied ? 'Copiado!' : 'Copiar'}
                 </button>
               </div>
+
+              {qrDataUrl && (
+                <div className="flex justify-center mb-6">
+                  <img
+                    src={qrDataUrl}
+                    alt="QR Code do cardapio"
+                    className="w-48 h-48 rounded-xl border-2 border-orange-200 dark:border-orange-500/20 object-contain bg-white"
+                  />
+                </div>
+              )}
             </div>
             <button 
-              className="w-full bg-slate-100 dark:bg-[#262626] hover:bg-slate-200 dark:hover:bg-[#3f3f46] text-slate-900 dark:text-white py-2.5 rounded-lg font-semibold transition-colors text-sm flex items-center justify-center gap-2"
-              onClick={() => {
-                alert('O download do QR Code seria iniciado aqui.');
-              }}
+              disabled={qrGenerating}
+              className="w-full bg-slate-100 dark:bg-[#262626] hover:bg-slate-200 dark:hover:bg-[#3f3f46] disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 dark:text-white py-2.5 rounded-lg font-semibold transition-colors text-sm flex items-center justify-center gap-2"
+              onClick={downloadQRCode}
             >
-              <Download className="w-4 h-4" /> Baixar QR Code
+              <Download className="w-4 h-4" /> {qrGenerating ? 'Gerando...' : 'Baixar QR Code'}
             </button>
           </motion.div>
         </div>
@@ -650,9 +693,9 @@ export function Overview() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.6 }}
-            className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#262626] rounded-2xl p-6 flex flex-col justify-between"
+            className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#262626] rounded-2xl p-6 flex flex-col"
           >
-            <div>
+            <div className="flex-1">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-orange-100 dark:bg-orange-500/20 rounded-lg flex items-center justify-center">
                   <QrCode className="w-5 h-5 text-orange-600 dark:text-orange-500" />
@@ -662,7 +705,7 @@ export function Overview() {
               <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">
                 Compartilhe seu link ou baixe o QR Code.
               </p>
-              
+
               <div className="flex items-center gap-2 mb-4 p-2 bg-slate-50 dark:bg-[#09090b] rounded-lg border border-slate-200 dark:border-[#262626]">
                 <LinkIcon className="w-4 h-4 text-slate-400 shrink-0 ml-1" />
                 <a 
@@ -686,12 +729,23 @@ export function Overview() {
                   {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
+
+              {qrDataUrl && (
+                <div className="flex justify-center mb-4">
+                  <img
+                    src={qrDataUrl}
+                    alt="QR Code do cardapio"
+                    className="w-44 h-44 rounded-xl border-2 border-orange-200 dark:border-orange-500/20 object-contain bg-white"
+                  />
+                </div>
+              )}
             </div>
             <button 
-              className="w-full bg-slate-100 dark:bg-[#262626] hover:bg-slate-200 dark:hover:bg-[#3f3f46] text-slate-900 dark:text-white py-2 rounded-lg font-semibold transition-colors text-sm flex items-center justify-center gap-2"
-              onClick={() => alert('O download do QR Code seria iniciado aqui.')}
+              disabled={qrGenerating}
+              className="w-full bg-slate-100 dark:bg-[#262626] hover:bg-slate-200 dark:hover:bg-[#3f3f46] disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 dark:text-white py-2 rounded-lg font-semibold transition-colors text-sm flex items-center justify-center gap-2"
+              onClick={downloadQRCode}
             >
-              <Download className="w-4 h-4" /> Baixar QR Code
+              <Download className="w-4 h-4" /> {qrGenerating ? 'Gerando...' : 'Baixar QR Code'}
             </button>
           </motion.div>
         </div>

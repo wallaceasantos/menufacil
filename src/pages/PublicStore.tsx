@@ -897,7 +897,7 @@ export default function PublicStore() {
                         storeInfo.paymentMethods.pix && { id: 'pix', name: 'PIX', icon: QrCode },
                         storeInfo.paymentMethods.card && { id: 'card', name: 'Cartão na entrega/retirada', icon: CreditCard },
                         storeInfo.paymentMethods.cash && { id: 'money', name: 'Dinheiro', icon: Banknote },
-                      ].filter(Boolean).map((method) => (
+                      ].filter((m): m is { id: string; name: string; icon: typeof QrCode } => !!m).map((method) => (
                         <label
                           key={method.id}
                           className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${

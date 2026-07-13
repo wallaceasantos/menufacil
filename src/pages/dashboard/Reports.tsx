@@ -347,7 +347,7 @@ export function Reports() {
                   borderRadius: '12px',
                   color: '#fff',
                 }}
-                formatter={(value: number) => formatCurrency(value)}
+                formatter={(value: any) => formatCurrency(value)}
               />
               <Line type="monotone" dataKey="value" stroke="#f97316" strokeWidth={2.5} dot={{ fill: '#f97316', r: 4 }} activeDot={{ r: 6 }} name="Faturamento" />
             </LineChart>
@@ -437,7 +437,7 @@ export function Reports() {
                       borderRadius: '12px',
                       color: '#fff',
                     }}
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value: any) => formatCurrency(value)}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -481,7 +481,7 @@ export function Reports() {
                     borderRadius: '12px',
                     color: '#fff',
                   }}
-                  formatter={(value: number, name: string) => name === 'revenue' ? formatCurrency(value) : value}
+                  formatter={(value: any, name: any) => name === 'revenue' ? formatCurrency(value) : value}
                 />
                 <Bar dataKey="orders" fill="#3b82f6" radius={[6, 6, 0, 0]} name="Pedidos" />
               </BarChart>

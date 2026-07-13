@@ -194,13 +194,13 @@ export function Customers() {
           </div>
         )}
 
-        {stats?.topCustomers.length > 0 && (
+        {(stats?.topCustomers?.length ?? 0) > 0 && (
           <div className="bg-white dark:bg-[#121214] p-6 rounded-2xl border border-slate-200 dark:border-[#262626]">
             <h3 className="font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <Crown className="w-5 h-5 text-amber-500" /> Top Clientes
             </h3>
             <div className="grid gap-3">
-              {stats.topCustomers.map((tc, i) => (
+              {stats?.topCustomers?.map((tc, i) => (
                 <div key={tc.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-[#18181b] rounded-xl">
                   <div className="flex items-center gap-3">
                     <span className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-bold">{i + 1}</span>
