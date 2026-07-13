@@ -913,7 +913,7 @@ export function Menu() {
                           className={`flex flex-col items-center gap-2 p-3 rounded-xl border text-sm transition-all ${
                             itemForm.productType === type.id
                               ? 'border-orange-500 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400'
-                              : 'border-slate-200 dark:border-[#262626] hover:border-orange-300 dark:hover:border-orange-500/50'
+                              : 'border-slate-200 dark:border-[#262626] text-slate-600 dark:text-slate-400 hover:border-orange-300 dark:hover:border-orange-500/50'
                           }`}
                         >
                           <type.icon className="w-5 h-5" />
