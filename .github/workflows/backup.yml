@@ -1,0 +1,53 @@
+name: Backup diário do banco
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar PostgreSQL client (pg_dump)
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+
+      - name: Gerar backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_DIR: ${{ github.workspace }}/backups
+          BACKUP_RETENTION_DAYS: 30
+        run: npx tsx scripts/backup-db.ts
+
+      - name: Criptografar backup
+        env:
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+        run: |
+          if [ -z "$BACKUP_ENCRYPTION_KEY" ]; then
+            echo "BACKUP_ENCRYPTION_KEY não configurada — abortando por segurança"
+            exit 1
+          fi
+          cd backups
+          for f in *.sql.gz; do
+            openssl enc -aes-256-cbc -pbkdf2 -salt -in "$f" -out "$f.enc" -pass env:BACKUP_ENCRYPTION_KEY
+            rm "$f"
+          done
+
+      - name: Upload do backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: menufacil-backup-${{ github.run_number }}
+          path: backups/*.sql.gz.enc
+          retention-days: 30
+          if-no-files-found: error

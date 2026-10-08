@@ -108,6 +108,34 @@ router.put('/', async (req, res, next) => {
   }
 })
 
+router.get('/onboarding', async (req, res, next) => {
+  try {
+    const tenant = req.tenant!
+    res.json({
+      completed: Boolean(tenant.onboardingCompletedAt),
+      completedAt: tenant.onboardingCompletedAt?.toISOString() || null,
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/onboarding/complete', async (req, res, next) => {
+  try {
+    const tenant = req.tenant!
+    const updated = await prisma.tenant.update({
+      where: { id: tenant.id },
+      data: { onboardingCompletedAt: tenant.onboardingCompletedAt || new Date() },
+    })
+    res.json({
+      completed: true,
+      completedAt: updated.onboardingCompletedAt?.toISOString() || null,
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.post('/domain/verify', async (req, res, next) => {
   try {
     const tenant = req.tenant!

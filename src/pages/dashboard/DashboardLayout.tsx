@@ -12,6 +12,7 @@ import {
   X,
   Store,
   Headset,
+  HelpCircle,
   Package,
   MessageCircle,
   CreditCard,
@@ -79,6 +80,7 @@ export function DashboardLayout() {
     { name: 'Faturas', path: '/dashboard/invoices', icon: FileText, roles: ['dono'], plans: ['basico', 'completo'] },
     { name: 'WhatsApp', path: '/dashboard/whatsapp', icon: MessageCircle, roles: ['dono'], plans: ['completo'] },
     { name: 'Suporte', path: '/dashboard/support', icon: Headset, roles: ['dono', 'atendente'], plans: ['basico', 'completo'] },
+    { name: 'Ajuda', path: '/dashboard/help', icon: HelpCircle, roles: ['dono', 'atendente', 'cozinha', 'entregador'], plans: ['basico', 'completo'] },
     { name: 'Clientes', path: '/dashboard/customers', icon: Users, roles: ['dono', 'atendente'], plans: ['completo'] },
     { name: 'Pedidos', path: '/dashboard/orders', icon: ShoppingBag, roles: ['dono', 'atendente', 'cozinha', 'entregador'], plans: ['completo'] },
   ]

@@ -1246,24 +1246,20 @@ export default function Home() {
               </h4>
               <ul className="space-y-2 text-sm text-slate-400 dark:text-slate-500 dark:text-slate-400">
                 <li>
-                  <button
-                    onClick={() =>
-                      openInfoModal("Termos de Uso", termosDeUsoContent)
-                    }
-                    className="hover:text-orange-500 transition-colors text-left w-full"
+                  <Link
+                    to="/termos-de-uso"
+                    className="hover:text-orange-500 transition-colors text-left w-full block"
                   >
                     Termos de Uso
-                  </button>
+                  </Link>
                 </li>
                 <li>
-                  <button
-                    onClick={() =>
-                      openInfoModal("Privacidade", privacidadeContent)
-                    }
-                    className="hover:text-orange-500 transition-colors text-left w-full"
+                  <Link
+                    to="/politica-de-privacidade"
+                    className="hover:text-orange-500 transition-colors text-left w-full block"
                   >
                     Privacidade
-                  </button>
+                  </Link>
                 </li>
                 <li>
                   <button

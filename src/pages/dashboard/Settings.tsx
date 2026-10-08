@@ -10,6 +10,7 @@ import { api, apiWithTenant } from '../../lib/api';
 import { getTenantSlug } from '../../data/tenantStorage';
 import toast from 'react-hot-toast';
 import { BillingForm, type BillingData } from '../../components/BillingForm';
+import { TwoFactorSetup } from '../../components/TwoFactorSetup';
 import { sanitizeCpf } from '../../lib/cpf';
 
 export function Settings() {
@@ -198,6 +199,7 @@ export function Settings() {
                       </div>
                     </div>
                   </div>
+                  <TwoFactorSetup />
                 </div>
               )}
 

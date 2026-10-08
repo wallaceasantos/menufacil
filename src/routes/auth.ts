@@ -1,11 +1,22 @@
 import { Router } from 'express'
+import crypto from 'crypto'
 import { prisma } from '../lib/prisma'
 import { hashPassword, verifyPassword } from '../utils/password'
-import { signToken } from '../utils/jwt'
+import { signToken, verifyToken } from '../utils/jwt'
 import { authenticate } from '../middleware/auth'
 import { isValidCpf, sanitizeCpf } from '../lib/cpf'
+import { sendEmail } from '../lib/email'
+import { logger, errorMeta } from '../lib/logger'
+import { generateSecret, verifyTotp, otpauthUrl } from '../lib/totp'
+import { auditFromRequest } from '../lib/audit'
 
 const router = Router()
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000
+
+function hashResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
 
 function serializeUser(user: any) {
   return {
@@ -14,6 +25,8 @@ function serializeUser(user: any) {
     email: user.email,
     role: user.role,
     tenantId: user.tenantId,
+    twoFactorEnabled: Boolean(user.twoFactorEnabled),
+    onboardingCompletedAt: user.tenant?.onboardingCompletedAt?.toISOString?.() || null,
     tenantSlug: user.tenant?.slug,
     plan: user.tenant?.plan,
     paymentStatus: user.tenant?.paymentStatus,
@@ -81,7 +94,7 @@ router.post('/register', async (req, res, next) => {
 
 router.post('/login', async (req, res, next) => {
   try {
-    const { email, password } = req.body
+    const { email, password, code } = req.body
 
     if (!email || !password) {
       res.status(400).json({ error: 'Email e senha são obrigatórios' })
@@ -105,12 +118,275 @@ router.post('/login', async (req, res, next) => {
       return
     }
 
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      if (!code) {
+        const tempToken = signToken(
+          {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+            tenantId: user.tenantId,
+            twoFactorPending: true,
+          },
+          '10m'
+        )
+        res.json({ requires2FA: true, tempToken })
+        return
+      }
+
+      if (!verifyTotp(String(code), user.twoFactorSecret)) {
+        res.status(401).json({ error: 'Código de verificação inválido' })
+        return
+      }
+    }
+
     const token = signToken({
       userId: user.id,
       email: user.email,
       role: user.role,
       tenantId: user.tenantId,
     })
+
+    auditFromRequest(req, 'auth.login', 'user', user.id, { email: user.email })
+
+    res.json({
+      user: serializeUser(user),
+      token,
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body
+
+    if (!email || typeof email !== 'string') {
+      res.status(400).json({ error: 'Email é obrigatório' })
+      return
+    }
+
+    const normalizedEmail = email.trim().toLowerCase()
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      include: { tenant: true },
+    })
+
+    if (!user) {
+      res.json({ message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.' })
+      return
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex')
+    const tokenHash = hashResetToken(rawToken)
+
+    await prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    })
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+      },
+    })
+
+    const appUrl = process.env.APP_URL || 'http://localhost:3000'
+    const resetLink = `${appUrl.replace(/\/$/, '')}/reset-password?token=${rawToken}`
+
+    await sendEmail({
+      to: user.email,
+      subject: 'Recuperação de senha — MenuFácil',
+      text: `Olá, ${user.name}.\n\nRecebemos uma solicitação para redefinir sua senha no MenuFácil.\n\nAcesse o link abaixo para criar uma nova senha (válido por 1 hora):\n${resetLink}\n\nSe você não solicitou esta alteração, ignore este email. Sua senha permanecerá a mesma.`,
+      html: `
+        <p>Olá, <strong>${user.name}</strong>.</p>
+        <p>Recebemos uma solicitação para redefinir sua senha no <strong>MenuFácil</strong>.</p>
+        <p><a href="${resetLink}">Clique aqui para criar uma nova senha</a> (válido por 1 hora).</p>
+        <p>Ou copie o link: <br/> <code>${resetLink}</code></p>
+        <p>Se você não solicitou esta alteração, ignore este email. Sua senha permanecerá a mesma.</p>
+      `,
+    })
+
+    res.json({ message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.' })
+  } catch (err) {
+    logger.error('Erro em forgot-password', errorMeta(err))
+    next(err)
+  }
+})
+
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { token, password } = req.body
+
+    if (!token || !password) {
+      res.status(400).json({ error: 'Token e nova senha são obrigatórios' })
+      return
+    }
+
+    if (typeof password !== 'string' || password.length < 8) {
+      res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres' })
+      return
+    }
+
+    const tokenHash = hashResetToken(String(token))
+    const resetToken = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+    })
+
+    if (!resetToken || resetToken.usedAt || new Date(resetToken.expiresAt) < new Date()) {
+      res.status(400).json({ error: 'Token inválido ou expirado. Solicite uma nova recuperação de senha.' })
+      return
+    }
+
+    const passwordHash = await hashPassword(password)
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { passwordHash },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { usedAt: new Date() },
+      }),
+    ])
+
+    res.json({ message: 'Senha redefinida com sucesso. Você já pode entrar com a nova senha.' })
+  } catch (err) {
+    logger.error('Erro em reset-password', errorMeta(err))
+    next(err)
+  }
+})
+
+router.post('/2fa/setup', authenticate, async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } })
+    if (!user) {
+      res.status(404).json({ error: 'Usuário não encontrado' })
+      return
+    }
+
+    const secret = generateSecret()
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorSecret: secret, twoFactorEnabled: false },
+    })
+
+    res.json({
+      secret,
+      otpauthUrl: otpauthUrl(secret, user.email),
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/2fa/enable', authenticate, async (req, res, next) => {
+  try {
+    const { code } = req.body
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } })
+    if (!user || !user.twoFactorSecret) {
+      res.status(400).json({ error: 'Execute o setup do 2FA primeiro' })
+      return
+    }
+
+    if (!code || !verifyTotp(String(code), user.twoFactorSecret)) {
+      res.status(400).json({ error: 'Código de verificação inválido' })
+      return
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: true },
+    })
+
+    auditFromRequest(req, 'auth.2fa_enable', 'user', user.id)
+
+    res.json({ message: 'Autenticação de dois fatores ativada com sucesso.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/2fa/disable', authenticate, async (req, res, next) => {
+  try {
+    const { code } = req.body
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } })
+    if (!user) {
+      res.status(404).json({ error: 'Usuário não encontrado' })
+      return
+    }
+
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      if (!code || !verifyTotp(String(code), user.twoFactorSecret)) {
+        res.status(400).json({ error: 'Código de verificação inválido' })
+        return
+      }
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: false, twoFactorSecret: null },
+    })
+
+    auditFromRequest(req, 'auth.2fa_disable', 'user', user.id)
+
+    res.json({ message: 'Autenticação de dois fatores desativada.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/2fa/verify', async (req, res, next) => {
+  try {
+    const { tempToken, code } = req.body
+
+    if (!tempToken || !code) {
+      res.status(400).json({ error: 'Token temporário e código são obrigatórios' })
+      return
+    }
+
+    let payload
+    try {
+      payload = verifyToken(String(tempToken))
+    } catch {
+      res.status(401).json({ error: 'Token temporário inválido ou expirado' })
+      return
+    }
+
+    if (!payload.twoFactorPending) {
+      res.status(400).json({ error: 'Token não requer verificação 2FA' })
+      return
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { id: payload.userId },
+      include: { tenant: true },
+    })
+
+    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+      res.status(400).json({ error: '2FA não está ativo para esta conta' })
+      return
+    }
+
+    if (!verifyTotp(String(code), user.twoFactorSecret)) {
+      res.status(401).json({ error: 'Código de verificação inválido' })
+      return
+    }
+
+    const token = signToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      tenantId: user.tenantId,
+    })
+
+    auditFromRequest(req, 'auth.login_2fa', 'user', user.id, { email: user.email })
 
     res.json({
       user: serializeUser(user),

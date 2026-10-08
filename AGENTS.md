@@ -24,8 +24,10 @@ npm install
 npx prisma db push    # sync schema
 npm run dev            # frontend :3000
 npm run dev:server     # backend :3001 (tsx watch)
+npm run dev:worker     # worker de cron/cobrança + filas (opcional)
 npm run lint           # tsc --noEmit
 npm test               # vitest run (testes unitários)
+npm run test:e2e       # Playwright (fluxo pedido/PIX)
 npm start              # production: vite build + tsx server
 npm run db:backup      # backup do Postgres (requer pg_dump)
 ```
@@ -69,7 +71,7 @@ src/
   App.tsx                     — routes + lazy pages
   routes/                     — 23 route files, all registered in index.ts
     index.ts                  — master router (all /api/* mounts)
-    auth.ts                   — register, login, me, register-tenant (with invite token)
+    auth.ts                   — register, login, me, register-tenant (with invite token), forgot-password, reset-password
     tenants.ts                — CRUD tenants
     public.ts                 — storefront, orders, tracking, PIX, ratings, coupon validation
     menu.ts                   — categories + products CRUD
@@ -161,7 +163,7 @@ src/
 - `asaasCustomerId` / `asaasSubscriptionId` — misnamed, actually hold Mercado Pago IDs
 - `product_complements` / `order_item_complements` — legacy tables, new code uses ProductComponent/ProductChoiceGroup
 - Schema file: **only** `prisma/schema.prisma` (deleted `database/schema.prisma` duplicate)
-- Use `npx prisma db push` for migrations (not `migrate dev`)
+- Migrations: `prisma/migrations/` versionadas. Produção usa `npm run db:migrate` (`prisma migrate deploy`). Em dev, mudanças de schema: `npm run db:migrate:dev` (gera migração nova). Bancos criados antes das migrations: rodar `npm run db:baseline` uma vez
 
 ## Authentication & Multi-Tenancy
 
@@ -229,10 +231,24 @@ hasFeature('stock-control', user?.plan) // true only for completo
 
 ## Billing Cron
 
-`setInterval` runs every hour in `server.ts`:
+`setInterval` runs every hour in `server.ts` (ou no worker — ver abaixo):
 1. **Simulated billing** (`MP_LOCAL_MODE` only): charges tenants with `nextBillingDate <= today`
 2. **Overdue detection** (always runs): finds tenants 31+ days past `lastBillingDate` → auto-downgrade to `basico`
 3. At 3+ days: sets `paymentStatus = 'overdue'`
+
+## Redis, Filas e Worker (Sprint 3)
+
+- **Redis opcional** (`REDIS_URL`): rate limit distribuído (`src/lib/rateLimitStore.ts`) + filas (`src/lib/queue.ts`). Sem Redis, tudo cai em fallback em memória.
+- **Worker** (`npm run worker` / `src/worker.ts`): roda o cron de cobrança + consome filas (`billing:run`, `billing:tenant`). Com worker dedicado, subir o server com `BILLING_IN_WORKER=true` para não duplicar o cron.
+- **Auditoria** (`src/lib/audit.ts` + model `AuditLog`): ações admin e login/2FA são gravadas. Consulta: `GET /api/admin/audit-logs`.
+- **2FA TOTP** (`src/lib/totp.ts`): `POST /api/auth/2fa/setup` → `/2fa/enable` → login exige `code` e retorna `requires2FA` + `tempToken` (10min) → `POST /api/auth/2fa/verify`. Tokens com `twoFactorPending` são rejeitados pelo `authenticate`.
+- **Frontend**: `LoginModal.tsx` tem passo de código 2FA; setup em Configurações → Conta (`TwoFactorSetup.tsx`).
+
+## Onboarding, Ajuda e Métricas (Sprint 4)
+
+- **Onboarding wizard** (`src/pages/dashboard/Onboarding.tsx`, rota `/onboarding`): 4 passos — perfil da loja → primeiro produto → pagamento → pronto. Campo `Tenant.onboardingCompletedAt`; `GET/POST /api/store/onboarding`. Login sem `onboardingCompletedAt` redireciona para o wizard.
+- **Help Center** (`src/pages/dashboard/HelpCenter.tsx`, rota `/dashboard/help`): FAQ com busca + categorias, CTA para chamados. Item "Ajuda" na sidebar (todos os papéis/planos).
+- **Métricas admin**: `GET /api/admin/metrics?days=30` — MRR, ARR, churn (via `PlanChangeLog`), upgrades/downgrades, novas lojas, lista de churned tenants e timeline diária. Cards no tab Financeiro do `AdminDashboard`.
 
 ## Logo Customization
 
@@ -331,3 +347,33 @@ VAPID_PRIVATE_KEY=...
 ### Admin padrão
 - Email: `ADMIN_EMAIL` / Senha: `ADMIN_INITIAL_PASSWORD` (variáveis de ambiente — nunca hardcodar credenciais)
 - Resetar banco: Admin Dashboard → Finanças → Zona de Perigo → Resetar Banco (bloqueado em produção)
+
+## Operação (Sprint 1)
+
+### Migrations (importante no primeiro deploy após migrar do `db push`)
+1. Banco já existente (criado com `db push`): rodar `npm run db:baseline` UMA vez (marca `0_init` como aplicada)
+2. Depois disso, cada deploy usa `npm run db:migrate` (já incluso no `start:prod`)
+3. Mudanças de schema em dev: `npm run db:migrate:dev -- --name nome_da_mudanca`
+
+### Backup automático (GitHub Actions)
+- Workflow: `.github/workflows/backup.yml` — roda todo dia às 05:00 UTC
+- Secrets necessários no GitHub (Settings → Secrets → Actions):
+  - `DATABASE_URL` — connection string do Postgres (aceita a pública do Railway)
+  - `BACKUP_ENCRYPTION_KEY` — senha para criptografar o backup (guardar em local seguro!)
+- Backups ficam como artifacts do workflow (retenção 30 dias), criptografados (AES-256)
+- Restaurar: baixar artifact → `openssl enc -d -aes-256-cbc -pbkdf2 -in backup.sql.gz.enc -out backup.sql.gz -pass env:BACKUP_ENCRYPTION_KEY` → `gunzip` → `psql`
+
+### Sentry (monitoramento de erros)
+1. Criar projeto em https://sentry.io (free tier)
+2. Copiar o DSN e configurar: `SENTRY_DSN` (backend) e `VITE_SENTRY_DSN` (frontend) no Railway
+3. Sem DSN, o Sentry fica desativado (sem impacto)
+
+### UptimeRobot (alerta de downtime)
+1. Criar conta em https://uptimerobot.com (free tier, 50 monitores)
+2. Monitor HTTP apontando para `https://<seu-dominio>/health`
+3. Intervalo: 5 minutos; alertas por e-mail
+4. O `/health` valida o banco (retorna 503 se o Postgres cair)
+
+### Recuperação de senha
+- Fluxo: Login → "Esqueci minha senha" → e-mail com link (1h de validade) → `/reset-password?token=...`
+- Requer SMTP configurado (`SMTP_HOST`/`SMTP_USER`/`SMTP_PASS`); sem SMTP, o link aparece apenas no log do servidor (modo dev)

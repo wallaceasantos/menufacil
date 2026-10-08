@@ -12,6 +12,9 @@ const ProductFeature = lazy(() => import('./pages/ProductFeature'));
 const PublicStore = lazy(() => import('./pages/PublicStore'));
 const TrackingPage = lazy(() => import('./pages/TrackingPage').then(m => ({ default: m.TrackingPage })));
 const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPasswordPage })));
+const TermosDeUso = lazy(() => import('./pages/LegalPages').then(m => ({ default: m.TermosDeUso })));
+const PoliticaPrivacidade = lazy(() => import('./pages/LegalPages').then(m => ({ default: m.PoliticaPrivacidade })));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const DashboardLayout = lazy(() => import('./pages/dashboard/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
 const Overview = lazy(() => import('./pages/dashboard/Overview').then(m => ({ default: m.Overview })));
@@ -32,6 +35,8 @@ const DeliveryZones = lazy(() => import('./pages/dashboard/DeliveryZones').then(
 const PrinterSettings = lazy(() => import('./pages/dashboard/PrinterSettings').then(m => ({ default: m.PrinterSettings })));
 const Discounts = lazy(() => import('./pages/dashboard/Discounts').then(m => ({ default: m.Discounts })));
 const Team = lazy(() => import('./pages/dashboard/Team').then(m => ({ default: m.Team })));
+const Onboarding = lazy(() => import('./pages/dashboard/Onboarding').then(m => ({ default: m.Onboarding })));
+const HelpCenter = lazy(() => import('./pages/dashboard/HelpCenter').then(m => ({ default: m.HelpCenter })));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
@@ -58,6 +63,9 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/termos-de-uso" element={<TermosDeUso />} />
+              <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
               <Route path="/cardapio-digital" element={<ProductFeature type="cardapio" />} />
               <Route path="/pedidos-whatsapp" element={<ProductFeature type="whatsapp" />} />
               <Route path="/painel-gestao" element={<ProductFeature type="painel" />} />
@@ -99,7 +107,13 @@ function App() {
                 <Route path="discounts" element={<Discounts />} />
                 <Route path="team" element={<Team />} />
                 <Route path="delivery-zones" element={<DeliveryZones />} />
+                <Route path="help" element={<HelpCenter />} />
               </Route>
+              <Route path="/onboarding" element={
+                <PrivateRoute>
+                  <Onboarding />
+                </PrivateRoute>
+              } />
               <Route path="/dashboard/upgrade" element={
                 <PrivateRoute>
                   <Upgrade />

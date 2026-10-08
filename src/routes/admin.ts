@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma'
 import { PLANS } from '../data/plans'
 import { authenticate, requireAdmin } from '../middleware/auth'
 import { hashPassword } from '../utils/password'
+import { auditFromRequest } from '../lib/audit'
 
 const router = Router()
 
@@ -45,6 +46,7 @@ router.patch('/tenants/:id/status', async (req, res, next) => {
       where: { id },
       data: { status: newStatus },
     })
+    auditFromRequest(req, 'admin.tenant_status', 'tenant', id, { name: tenant.name, newStatus })
     res.json(mapTenant(updated))
   } catch (err) {
     next(err)
@@ -55,6 +57,7 @@ router.delete('/tenants/:id', async (req, res, next) => {
   try {
     const { id } = req.params
     await prisma.tenant.delete({ where: { id } })
+    auditFromRequest(req, 'admin.tenant_delete', 'tenant', id)
     res.status(204).send()
   } catch (err) {
     next(err)
@@ -93,6 +96,7 @@ router.post('/announcement', async (req, res, next) => {
     const announcement = await prisma.globalAnnouncement.create({
       data: { message: message || '', isActive: true },
     })
+    auditFromRequest(req, 'admin.announcement_create', 'global_announcement', announcement.id, { message: message || '' })
     res.json({ message: announcement.message })
   } catch (err) {
     next(err)
@@ -102,6 +106,7 @@ router.post('/announcement', async (req, res, next) => {
 router.delete('/announcement', async (req, res, next) => {
   try {
     await prisma.globalAnnouncement.updateMany({ data: { isActive: false } })
+    auditFromRequest(req, 'admin.announcement_delete', 'global_announcement')
     res.status(204).send()
   } catch (err) {
     next(err)
@@ -161,12 +166,104 @@ router.get('/plan-history', async (req, res, next) => {
   }
 })
 
-router.post('/reset-db', async (_req, res, next) => {
+router.get('/metrics', async (req, res, next) => {
+  try {
+    const now = new Date()
+    const days = Math.min(Number(req.query.days) || 30, 365)
+    const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+
+    const tenants = await prisma.tenant.findMany({
+      select: { id: true, plan: true, status: true, paymentStatus: true, createdAt: true },
+    })
+
+    const activeCompleto = tenants.filter((t) => t.plan === 'completo' && t.status === 'active')
+    const mrr = activeCompleto.length * PLANS.completo.price
+    const arr = mrr * 12
+
+    const changes = await prisma.planChangeLog.findMany({
+      where: { createdAt: { gte: since } },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    const downgrades = changes.filter((c) => c.oldPlan === 'completo' && c.newPlan === 'basico')
+    const upgrades = changes.filter((c) => c.oldPlan === 'basico' && c.newPlan === 'completo')
+
+    const baseAtStart = activeCompleto.length + downgrades.length - upgrades.length
+    const churnRate = baseAtStart > 0 ? Number(((downgrades.length / baseAtStart) * 100).toFixed(1)) : 0
+
+    const newTenants = tenants.filter((t) => new Date(t.createdAt) >= since)
+
+    const churnedTenantIds = [...new Set(downgrades.map((d) => d.tenantId))]
+    const churnedTenants = churnedTenantIds.length
+      ? await prisma.tenant.findMany({
+          where: { id: { in: churnedTenantIds } },
+          select: { id: true, name: true, slug: true },
+        })
+      : []
+
+    const byDay = new Map<string, { upgrades: number; downgrades: number }>()
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+      byDay.set(d.toISOString().split('T')[0], { upgrades: 0, downgrades: 0 })
+    }
+    for (const c of changes) {
+      const key = new Date(c.createdAt).toISOString().split('T')[0]
+      const entry = byDay.get(key)
+      if (!entry) continue
+      if (c.oldPlan === 'basico' && c.newPlan === 'completo') entry.upgrades += 1
+      if (c.oldPlan === 'completo' && c.newPlan === 'basico') entry.downgrades += 1
+    }
+
+    res.json({
+      mrr,
+      arr,
+      churnRate,
+      windowDays: days,
+      activeSubscriptions: activeCompleto.length,
+      upgrades: upgrades.length,
+      downgrades: downgrades.length,
+      newTenants: newTenants.length,
+      totalTenants: tenants.length,
+      churnedTenants,
+      timeline: [...byDay.entries()].map(([date, v]) => ({ date, ...v })),
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.get('/audit-logs', async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 100, 500)
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    })
+    res.json(
+      logs.map((l) => ({
+        id: l.id,
+        actorEmail: l.actorEmail,
+        actorRole: l.actorRole,
+        action: l.action,
+        resource: l.resource,
+        resourceId: l.resourceId,
+        details: l.details,
+        ip: l.ip,
+        createdAt: l.createdAt?.toISOString() || null,
+      }))
+    )
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/reset-db', async (req, res, next) => {
   try {
     if (process.env.NODE_ENV === 'production') {
       res.status(403).json({ error: 'Reset de banco não permitido em produção' })
       return
     }
+    auditFromRequest(req, 'admin.reset_db', 'database')
     // Delete all data in correct order (children first)
     await prisma.stockMovement.deleteMany()
     await prisma.inventoryBatch.deleteMany()

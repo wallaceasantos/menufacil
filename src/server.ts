@@ -6,13 +6,25 @@ import dotenv from 'dotenv'
 import http from 'http'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import * as Sentry from '@sentry/node'
 import routes from './routes'
 import { prisma } from './lib/prisma'
 import { errorHandler } from './middleware/errorHandler'
-import { logPlanChange } from './lib/planLog'
+import { billingCron } from './jobs/billing'
+import { logger } from './lib/logger'
 import { resolveTenantByDomain } from './middleware/domain'
+import { RedisRateLimitStore } from './lib/rateLimitStore'
 
 dotenv.config()
+
+const SENTRY_DSN = process.env.SENTRY_DSN || ''
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 0.1,
+  })
+}
 
 const app = express()
 app.set('trust proxy', 1)
@@ -77,6 +89,7 @@ app.use(cors({
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  store: new RedisRateLimitStore('rl:auth:'),
   message: { error: 'Muitas tentativas. Tente novamente em 15 minutos.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -85,6 +98,7 @@ const authLimiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
+  store: new RedisRateLimitStore('rl:login:'),
   skipSuccessfulRequests: true,
   message: { error: 'Muitas tentativas de login. Tente novamente em 15 minutos.' },
   standardHeaders: true,
@@ -94,6 +108,7 @@ const loginLimiter = rateLimit({
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
+  store: new RedisRateLimitStore('rl:register:'),
   message: { error: 'Muitos cadastros. Tente novamente em 1 hora.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -102,6 +117,7 @@ const registerLimiter = rateLimit({
 const generalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 200,
+  store: new RedisRateLimitStore('rl:general:'),
   standardHeaders: true,
   legacyHeaders: false,
 })
@@ -152,8 +168,26 @@ app.use('/api', generalLimiter)
 
 app.use('/api', routes)
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+app.get('/health', async (_req, res) => {
+  const startedAt = Date.now()
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    res.json({
+      status: 'ok',
+      database: 'ok',
+      dbLatencyMs: Date.now() - startedAt,
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    })
+  } catch {
+    res.status(503).json({
+      status: 'degraded',
+      database: 'error',
+      dbLatencyMs: Date.now() - startedAt,
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    })
+  }
 })
 
 // Serve React SPA in production
@@ -175,101 +209,20 @@ if (process.env.NODE_ENV === 'production' || process.env.SERVE_STATIC === 'true'
   console.log(`📦 Serving static files from ${distPath}`)
 }
 
+if (SENTRY_DSN) {
+  app.use(Sentry.expressErrorHandler())
+}
+
 app.use(errorHandler)
 
 const LOCAL_MODE = process.env.MP_LOCAL_MODE === 'true'
+const BILLING_IN_WORKER = process.env.BILLING_IN_WORKER === 'true'
 
-async function billingCron() {
-  try {
-    const now = new Date()
-    const todayStr = now.toISOString().split('T')[0]
-
-    // 1. Check authorized subscriptions past due for billing
-    const toBill = await prisma.tenant.findMany({
-      where: {
-        subscriptionStatus: 'authorized',
-        nextBillingDate: { lte: new Date(todayStr) },
-        plan: 'completo',
-      },
-    })
-
-    for (const tenant of toBill) {
-      if (LOCAL_MODE) {
-        // Simulate monthly charge
-        const nextBilling = new Date()
-        nextBilling.setDate(nextBilling.getDate() + 30)
-
-        await prisma.tenant.update({
-          where: { id: tenant.id },
-          data: {
-            paymentStatus: 'paid',
-            overdueDays: 0,
-            lastBillingDate: new Date(),
-            nextBillingDate: nextBilling,
-          },
-        })
-        console.log(`[Billing Cron] Local charge OK for tenant ${tenant.id} - next billing ${nextBilling.toISOString().split('T')[0]}`)
-      } else {
-        // In production, MP handles the charge via webhook
-        // Just mark as processing
-        console.log(`[Billing Cron] Tenant ${tenant.id} awaiting MP charge`)
-      }
-    }
-
-    // 2. Check tenants that missed payment (always runs)
-    const overdueThreshold = new Date()
-    overdueThreshold.setDate(overdueThreshold.getDate() - 31)
-
-    const missed = await prisma.tenant.findMany({
-      where: {
-        subscriptionStatus: 'authorized',
-        paymentStatus: 'paid',
-        lastBillingDate: { lte: overdueThreshold },
-        plan: 'completo',
-      },
-    })
-
-    for (const tenant of missed) {
-      const daysSinceLastBilling = tenant.lastBillingDate
-        ? Math.floor((now.getTime() - new Date(tenant.lastBillingDate).getTime()) / (1000 * 60 * 60 * 24)) - 30
-        : 1
-
-      const actualOverdue = Math.max(1, daysSinceLastBilling)
-      const updateData: any = { overdueDays: actualOverdue }
-
-      if (actualOverdue >= 30) {
-        updateData.plan = 'basico'
-        updateData.subscriptionStatus = 'cancelled'
-        updateData.cardLastFour = null
-        updateData.nextBillingDate = null
-        updateData.paymentStatus = 'overdue'
-
-        await logPlanChange({
-          tenantId: tenant.id,
-          oldPlan: tenant.plan,
-          newPlan: 'basico',
-          source: 'downgrade',
-          changedBy: 'system',
-        })
-        console.log(`[Billing Cron] Tenant ${tenant.id} downgraded to BASICO after ${actualOverdue} days overdue`)
-      } else {
-        if (actualOverdue >= 3 && tenant.paymentStatus !== 'overdue') {
-          updateData.paymentStatus = 'overdue'
-          }
-          console.log(`[Billing Cron] Tenant ${tenant.id} overdue day ${actualOverdue}`)
-        }
-
-        await prisma.tenant.update({ where: { id: tenant.id }, data: updateData })
-    }
-  } catch (err) {
-    console.error('[Billing Cron] Error:', err)
-  }
+if (!BILLING_IN_WORKER) {
+  setInterval(billingCron, 60 * 60 * 1000)
+  setTimeout(billingCron, 60 * 1000)
+  logger.info('[Billing] Cron de cobrança ativo no servidor (defina BILLING_IN_WORKER=true para rodar no worker)')
 }
-
-// Run billing check every hour
-setInterval(billingCron, 60 * 60 * 1000)
-// Run first check after 1 minute
-setTimeout(billingCron, 60 * 1000)
 
 const server = http.createServer(app)
 server.timeout = 0

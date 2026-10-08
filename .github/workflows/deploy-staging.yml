@@ -1,0 +1,31 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy para staging (Railway)
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_STAGING_TOKEN }}
+        run: railway up --service ${{ vars.RAILWAY_STAGING_SERVICE }} --environment staging --detach
+
+      - name: Health check
+        run: |
+          sleep 30
+          curl -fsS --retry 5 --retry-delay 15 --retry-all-errors "${{ vars.STAGING_URL }}/health"

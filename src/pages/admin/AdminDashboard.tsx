@@ -89,6 +89,7 @@ export function AdminDashboard() {
     loadAnnouncement();
     loadTickets();
     loadPlanHistory();
+    loadMetrics();
   }, []);
 
   const loadTenants = async () => {
@@ -124,6 +125,21 @@ export function AdminDashboard() {
     try {
       const data = await api('/admin/plan-history') as PlanHistoryEntry[];
       setPlanHistory(data);
+    } catch {}
+  };
+
+  const [metrics, setMetrics] = useState<{
+    mrr: number; arr: number; churnRate: number; windowDays: number;
+    activeSubscriptions: number; upgrades: number; downgrades: number;
+    newTenants: number; totalTenants: number;
+    churnedTenants: { id: string; name: string; slug: string }[];
+    timeline: { date: string; upgrades: number; downgrades: number }[];
+  } | null>(null);
+
+  const loadMetrics = async () => {
+    try {
+      const data = await api('/admin/metrics?days=30');
+      setMetrics(data as any);
     } catch {}
   };
 
@@ -414,6 +430,49 @@ export function AdminDashboard() {
                     <p className="text-sm text-slate-500 mt-2">{defaulters.length} lojas com atraso de pagamento</p>
                   </div>
                 </div>
+
+                {metrics && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="bg-white dark:bg-[#121214] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Churn ({metrics.windowDays}d)</p>
+                      <p className={`text-2xl font-bold mt-1 ${metrics.churnRate > 10 ? 'text-red-600 dark:text-red-500' : 'text-slate-900 dark:text-white'}`}>
+                        {metrics.churnRate.toFixed(1).replace('.', ',')}%
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">{metrics.downgrades} cancelamentos</p>
+                    </div>
+                    <div className="bg-white dark:bg-[#121214] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">ARR (anual)</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">R$ {metrics.arr.toFixed(2).replace('.', ',')}</p>
+                      <p className="text-xs text-slate-400 mt-1">{metrics.activeSubscriptions} assinaturas ativas</p>
+                    </div>
+                    <div className="bg-white dark:bg-[#121214] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Upgrades ({metrics.windowDays}d)</p>
+                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-500 mt-1">+{metrics.upgrades}</p>
+                      <p className="text-xs text-slate-400 mt-1">basico → completo</p>
+                    </div>
+                    <div className="bg-white dark:bg-[#121214] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Novas lojas ({metrics.windowDays}d)</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{metrics.newTenants}</p>
+                      <p className="text-xs text-slate-400 mt-1">{metrics.totalTenants} no total</p>
+                    </div>
+                  </div>
+                )}
+
+                {metrics && metrics.churnedTenants.length > 0 && (
+                  <div className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#262626] rounded-2xl p-6">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Lojas que cancelaram ({metrics.windowDays}d)</h3>
+                    <div className="space-y-2">
+                      {metrics.churnedTenants.map((t) => (
+                        <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-[#18181b] rounded-xl border border-slate-200 dark:border-[#262626]">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">{t.name}</p>
+                          <a href={`/loja/${t.slug}`} target="_blank" rel="noreferrer" className="text-xs text-orange-600 hover:text-orange-500">
+                            /loja/{t.slug}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#262626] rounded-2xl p-6">
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Lojas Inadimplentes</h3>

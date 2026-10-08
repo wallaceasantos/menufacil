@@ -11,7 +11,12 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
-    req.user = verifyToken(token)
+    const payload = verifyToken(token)
+    if (payload.twoFactorPending) {
+      res.status(401).json({ error: 'Verificação de dois fatores pendente' })
+      return
+    }
+    req.user = payload
     next()
   } catch {
     res.status(401).json({ error: 'Token inválido' })
