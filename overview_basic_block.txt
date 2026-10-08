@@ -1,0 +1,138 @@
+  if (user?.plan === 'basico') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Bem-vindo, {user?.name.split(' ')[0]}!</h1>
+            <PlanBadge plan={user?.plan} size="md" />
+          </div>
+          <p className="text-slate-500 dark:text-slate-400">Aqui está o resumo da sua loja.</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-orange-50 to-white dark:from-orange-900/20 dark:to-[#18181B] border border-orange-200 dark:border-orange-500/30 rounded-2xl p-8 flex flex-col md:flex-row items-center gap-8 justify-between">
+          <div className="space-y-4 max-w-xl">
+            <div className="flex items-center gap-2">
+              <Crown className="w-6 h-6 text-orange-600 dark:text-orange-500" />
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Faça um upgrade para o Plano Completo</h2>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300">
+              O seu plano Básico permite usar o Cardápio Digital e receber pedidos pelo WhatsApp sem taxas.
+              Desbloqueie ainda mais recursos para profissionalizar a gestão do seu negócio:
+            </p>
+            <ul className="grid sm:grid-cols-2 gap-2 text-sm text-slate-700 dark:text-slate-300">
+              {PLAN_FEATURES.filter((f) => !f.availableIn.includes('basico')).map((feature) => (
+                <li key={feature.id} className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0" />
+                  {feature.name}
+                </li>
+              ))}
+            </ul>
+            <button 
+              onClick={() => navigate('/dashboard/upgrade')}
+              className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-6 rounded-lg transition-colors inline-flex items-center gap-2"
+            >
+              Conhecer Plano Completo <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="hidden md:flex w-48 h-48 bg-white dark:bg-[#18181B] rounded-2xl shadow-xl flex-col justify-center items-center p-6 text-center border border-slate-200 dark:border-[#262626]">
+            <TrendingUp className="w-12 h-12 text-orange-500 mb-4" />
+            <span className="font-bold text-slate-900 dark:text-white text-sm">Desbloqueie todo o potencial da sua loja</span>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+           <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#262626] rounded-2xl p-6 flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-xl flex items-center justify-center mb-6">
+                <ShoppingBag className="w-6 h-6 text-orange-600 dark:text-orange-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Seu Cardápio Digital</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
+                Gerencie seus produtos, categorias e preços. Mantenha seu cardápio sempre atualizado para receber mais pedidos no WhatsApp.
+              </p>
+            </div>
+            <button 
+              onClick={() => navigate('/dashboard/menu')}
+              className="w-full bg-slate-100 dark:bg-[#262626] hover:bg-slate-200 dark:hover:bg-[#3f3f46] text-slate-900 dark:text-white py-2.5 rounded-lg font-semibold transition-colors text-sm"
+            >
+              Acessar Cardápio
+            </button>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#262626] rounded-2xl p-6 flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-xl flex items-center justify-center mb-6">
+                <QrCode className="w-6 h-6 text-orange-600 dark:text-orange-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Acesso ao Cardápio</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
+                Compartilhe o link da sua loja ou gere um QR Code para imprimir e colocar nas mesas ou panfletos.
+              </p>
+              
+              <div className="flex items-center gap-2 mb-6 p-3 bg-slate-50 dark:bg-[#09090b] rounded-lg border border-slate-200 dark:border-[#262626]">
+                <LinkIcon className="w-4 h-4 text-slate-400 shrink-0" />
+                <a 
+                  href={`/loja/${user?.name?.toLowerCase().replace(/\s+/g, '') || 'minha-loja'}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 truncate flex-1 underline"
+                  title="Acessar sua loja pública"
+                >
+                  menufacil.com/{user?.name?.toLowerCase().replace(/\s+/g, '') || 'minha-loja'}
+                </a>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/loja/${user?.name?.toLowerCase().replace(/\s+/g, '') || 'minha-loja'}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="text-orange-600 hover:text-orange-700 dark:text-orange-500 dark:hover:text-orange-400 text-sm font-semibold flex items-center gap-1"
+                >
+                  {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copiado!' : 'Copiar'}
+                </button>
+              </div>
+            </div>
+            <button 
+              className="w-full bg-slate-100 dark:bg-[#262626] hover:bg-slate-200 dark:hover:bg-[#3f3f46] text-slate-900 dark:text-white py-2.5 rounded-lg font-semibold transition-colors text-sm flex items-center justify-center gap-2"
+              onClick={() => {
+                alert('O download do QR Code seria iniciado aqui.');
+              }}
+            >
+              <Download className="w-4 h-4" /> Baixar QR Code
+            </button>
+          </motion.div>
+        </div>
+
+        {/* Teaser de recursos bloqueados */}
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            { icon: TrendingUp, title: 'Relatórios de Vendas', feature: 'management-dashboard' },
+            { icon: DollarSign, title: 'Ticket Médio', feature: 'management-dashboard' },
+            { icon: Printer, title: 'Impressão de Cupons', feature: 'coupon-printing' },
+          ].map((item, index) => (
+            <motion.div
+              key={item.feature + index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
+              className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#262626] rounded-2xl p-6 opacity-75 hover:opacity-100 transition-opacity"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 bg-slate-100 dark:bg-[#262626] rounded-lg flex items-center justify-center">
+                  <item.icon className="w-5 h-5 text-slate-500" />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-500">Completo</span>
+              </div>
+              <h3 className="font-bold text-slate-900 dark:text-white mb-1">{item.title}</h3>
+              <p className="text
