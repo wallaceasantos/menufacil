@@ -3,7 +3,7 @@ builder = "NIXPACKS"
 buildCommand = "npm install --include=optional && npm run build"
 
 [deploy]
-startCommand = "prisma migrate deploy && npx tsx src/server.ts"
+startCommand = "npx prisma db push --skip-generate && npx tsx src/server.ts"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
