@@ -10,6 +10,7 @@ import { generateSecret, verifyTotp, otpauthUrl } from '../lib/totp'
 import { auditFromRequest, logAudit } from '../lib/audit'
 import { getRedis, isRedisAvailable } from '../lib/redis'
 import { enqueueEmail } from '../jobs/email'
+import { resetPasswordEmail, passwordChangedEmail } from '../lib/emailTemplates'
 
 const router = Router()
 
@@ -245,15 +246,7 @@ router.post('/forgot-password', async (req, res, next) => {
 
     enqueueEmail({
       to: user.email,
-      subject: 'Recuperação de senha — MenuFácil',
-      text: `Olá, ${user.name}.\n\nRecebemos uma solicitação para redefinir sua senha no MenuFácil.\n\nAcesse o link abaixo para criar uma nova senha (válido por 1 hora):\n${resetLink}\n\nSe você não solicitou esta alteração, ignore este email. Sua senha permanecerá a mesma.`,
-      html: `
-        <p>Olá, <strong>${user.name}</strong>.</p>
-        <p>Recebemos uma solicitação para redefinir sua senha no <strong>MenuFácil</strong>.</p>
-        <p><a href="${resetLink}">Clique aqui para criar uma nova senha</a> (válido por 1 hora).</p>
-        <p>Ou copie o link: <br/> <code>${resetLink}</code></p>
-        <p>Se você não solicitou esta alteração, ignore este email. Sua senha permanecerá a mesma.</p>
-      `,
+      ...resetPasswordEmail(user.name, resetLink),
     })
 
     res.json({ message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.' })
@@ -325,13 +318,7 @@ router.post('/reset-password', async (req, res, next) => {
 
     enqueueEmail({
       to: updatedUser.email,
-      subject: 'Sua senha foi alterada — MenuFácil',
-      text: `Olá, ${updatedUser.name}.\n\nSua senha no MenuFácil foi alterada com sucesso.\n\nSe você não fez esta alteração, recupere seu acesso imediatamente pela opção "Esqueci minha senha" na tela de login.`,
-      html: `
-        <p>Olá, <strong>${updatedUser.name}</strong>.</p>
-        <p>Sua senha no <strong>MenuFácil</strong> foi alterada com sucesso.</p>
-        <p>Se você não fez esta alteração, recupere seu acesso imediatamente pela opção <strong>"Esqueci minha senha"</strong> na tela de login.</p>
-      `,
+      ...passwordChangedEmail(updatedUser.name),
     })
 
     res.json({ message: 'Senha redefinida com sucesso. Você já pode entrar com a nova senha.' })

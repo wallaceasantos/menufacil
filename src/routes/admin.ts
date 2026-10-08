@@ -193,6 +193,11 @@ router.get('/metrics', async (req, res, next) => {
 
     const newTenants = tenants.filter((t) => new Date(t.createdAt) >= since)
 
+    const [resetRequested, resetCompleted] = await Promise.all([
+      prisma.auditLog.count({ where: { action: 'auth.forgot_password', createdAt: { gte: since } } }),
+      prisma.auditLog.count({ where: { action: 'auth.reset_password', createdAt: { gte: since } } }),
+    ])
+
     const churnedTenantIds = [...new Set(downgrades.map((d) => d.tenantId))]
     const churnedTenants = churnedTenantIds.length
       ? await prisma.tenant.findMany({
@@ -224,6 +229,7 @@ router.get('/metrics', async (req, res, next) => {
       downgrades: downgrades.length,
       newTenants: newTenants.length,
       totalTenants: tenants.length,
+      passwordRecoveries: { requested: resetRequested, completed: resetCompleted },
       churnedTenants,
       timeline: [...byDay.entries()].map(([date, v]) => ({ date, ...v })),
     })

@@ -132,6 +132,7 @@ export function AdminDashboard() {
     mrr: number; arr: number; churnRate: number; windowDays: number;
     activeSubscriptions: number; upgrades: number; downgrades: number;
     newTenants: number; totalTenants: number;
+    passwordRecoveries: { requested: number; completed: number };
     churnedTenants: { id: string; name: string; slug: string }[];
     timeline: { date: string; upgrades: number; downgrades: number }[];
   } | null>(null);
@@ -432,7 +433,7 @@ export function AdminDashboard() {
                 </div>
 
                 {metrics && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <div className="bg-white dark:bg-[#121214] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
                       <p className="text-xs text-slate-500 dark:text-slate-400">Churn ({metrics.windowDays}d)</p>
                       <p className={`text-2xl font-bold mt-1 ${metrics.churnRate > 10 ? 'text-red-600 dark:text-red-500' : 'text-slate-900 dark:text-white'}`}>
@@ -454,6 +455,11 @@ export function AdminDashboard() {
                       <p className="text-xs text-slate-500 dark:text-slate-400">Novas lojas ({metrics.windowDays}d)</p>
                       <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{metrics.newTenants}</p>
                       <p className="text-xs text-slate-400 mt-1">{metrics.totalTenants} no total</p>
+                    </div>
+                    <div className="bg-white dark:bg-[#121214] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Recuperações de senha ({metrics.windowDays}d)</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{metrics.passwordRecoveries.requested}</p>
+                      <p className="text-xs text-slate-400 mt-1">{metrics.passwordRecoveries.completed} concluídas</p>
                     </div>
                   </div>
                 )}

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { KeyRound, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import { PasswordStrength } from '../components/PasswordStrength'
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
@@ -115,6 +116,7 @@ export function ResetPasswordPage() {
                   className="w-full bg-slate-50 dark:bg-[#18181b] border border-slate-200 dark:border-[#262626] focus:border-orange-500 focus:ring-orange-500 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-1 transition-all"
                 />
                 <p className="text-xs text-slate-400 dark:text-slate-500">Mínimo de 8 caracteres</p>
+                <PasswordStrength password={password} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Confirmar senha</label>
