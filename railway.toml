@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm run build"
+buildCommand = "npm install --include=optional && npm run build"
 
 [deploy]
 startCommand = "prisma migrate deploy && npx tsx src/server.ts"
