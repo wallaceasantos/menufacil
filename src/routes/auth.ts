@@ -5,11 +5,11 @@ import { hashPassword, verifyPassword } from '../utils/password'
 import { signToken, verifyToken } from '../utils/jwt'
 import { authenticate } from '../middleware/auth'
 import { isValidCpf, sanitizeCpf } from '../lib/cpf'
-import { sendEmail } from '../lib/email'
 import { logger, errorMeta } from '../lib/logger'
 import { generateSecret, verifyTotp, otpauthUrl } from '../lib/totp'
 import { auditFromRequest, logAudit } from '../lib/audit'
 import { getRedis, isRedisAvailable } from '../lib/redis'
+import { enqueueEmail } from '../jobs/email'
 
 const router = Router()
 
@@ -243,7 +243,7 @@ router.post('/forgot-password', async (req, res, next) => {
     const appUrl = process.env.APP_URL || 'http://localhost:3000'
     const resetLink = `${appUrl.replace(/\/$/, '')}/reset-password?token=${rawToken}`
 
-    await sendEmail({
+    enqueueEmail({
       to: user.email,
       subject: 'Recuperação de senha — MenuFácil',
       text: `Olá, ${user.name}.\n\nRecebemos uma solicitação para redefinir sua senha no MenuFácil.\n\nAcesse o link abaixo para criar uma nova senha (válido por 1 hora):\n${resetLink}\n\nSe você não solicitou esta alteração, ignore este email. Sua senha permanecerá a mesma.`,
@@ -282,8 +282,18 @@ router.post('/reset-password', async (req, res, next) => {
       where: { tokenHash },
     })
 
-    if (!resetToken || resetToken.usedAt || new Date(resetToken.expiresAt) < new Date()) {
-      res.status(400).json({ error: 'Token inválido ou expirado. Solicite uma nova recuperação de senha.' })
+    if (!resetToken) {
+      res.status(400).json({ error: 'Link de recuperação inválido. Solicite uma nova recuperação de senha.', code: 'invalid' })
+      return
+    }
+
+    if (resetToken.usedAt) {
+      res.status(400).json({ error: 'Este link já foi utilizado. Solicite uma nova recuperação de senha.', code: 'used' })
+      return
+    }
+
+    if (new Date(resetToken.expiresAt) < new Date()) {
+      res.status(400).json({ error: 'Este link expirou (válido por 1 hora). Solicite uma nova recuperação de senha.', code: 'expired' })
       return
     }
 
@@ -313,7 +323,7 @@ router.post('/reset-password', async (req, res, next) => {
       req
     )
 
-    sendEmail({
+    enqueueEmail({
       to: updatedUser.email,
       subject: 'Sua senha foi alterada — MenuFácil',
       text: `Olá, ${updatedUser.name}.\n\nSua senha no MenuFácil foi alterada com sucesso.\n\nSe você não fez esta alteração, recupere seu acesso imediatamente pela opção "Esqueci minha senha" na tela de login.`,
@@ -322,7 +332,7 @@ router.post('/reset-password', async (req, res, next) => {
         <p>Sua senha no <strong>MenuFácil</strong> foi alterada com sucesso.</p>
         <p>Se você não fez esta alteração, recupere seu acesso imediatamente pela opção <strong>"Esqueci minha senha"</strong> na tela de login.</p>
       `,
-    }).catch(() => {})
+    })
 
     res.json({ message: 'Senha redefinida com sucesso. Você já pode entrar com a nova senha.' })
   } catch (err) {

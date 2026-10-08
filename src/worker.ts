@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import { billingCron } from './jobs/billing'
+import { registerEmailJobs } from './jobs/email'
 import { registerHandler, startQueueWorker, stopQueueWorker } from './lib/queue'
 import { logger, errorMeta } from './lib/logger'
 import { prisma } from './lib/prisma'
@@ -23,6 +24,8 @@ registerHandler('billing:tenant', async (payload) => {
 })
 
 startQueueWorker(2000)
+
+registerEmailJobs()
 
 setInterval(() => {
   billingCron().catch((err) => logger.error('[Worker] Erro no billing cron', errorMeta(err)))

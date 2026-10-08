@@ -13,6 +13,7 @@ export function ResetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -34,6 +35,7 @@ export function ResetPasswordPage() {
       toast.success('Senha redefinida com sucesso!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao redefinir senha'
+      setErrorMessage(message)
       toast.error(message)
     } finally {
       setLoading(false)
@@ -83,6 +85,19 @@ export function ResetPasswordPage() {
                 className="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold transition-colors"
               >
                 Ir para o login
+              </button>
+            </div>
+          ) : errorMessage ? (
+            <div className="text-center space-y-4">
+              <p className="text-slate-700 dark:text-slate-300">{errorMessage}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Na tela de login, clique em "Esqueci minha senha" para receber um novo link.
+              </p>
+              <button
+                onClick={() => navigate('/')}
+                className="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold transition-colors"
+              >
+                Solicitar novo link
               </button>
             </div>
           ) : (

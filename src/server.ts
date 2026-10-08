@@ -11,6 +11,8 @@ import routes from './routes'
 import { prisma } from './lib/prisma'
 import { errorHandler } from './middleware/errorHandler'
 import { billingCron } from './jobs/billing'
+import { registerEmailJobs } from './jobs/email'
+import { startQueueWorker } from './lib/queue'
 import { logger } from './lib/logger'
 import { resolveTenantByDomain } from './middleware/domain'
 import { RedisRateLimitStore } from './lib/rateLimitStore'
@@ -223,6 +225,9 @@ app.use(errorHandler)
 
 const LOCAL_MODE = process.env.MP_LOCAL_MODE === 'true'
 const BILLING_IN_WORKER = process.env.BILLING_IN_WORKER === 'true'
+
+registerEmailJobs()
+startQueueWorker()
 
 if (!BILLING_IN_WORKER) {
   setInterval(billingCron, 60 * 60 * 1000)

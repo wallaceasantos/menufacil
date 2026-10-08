@@ -240,8 +240,9 @@ hasFeature('stock-control', user?.plan) // true only for completo
 
 ## Redis, Filas e Worker (Sprint 3)
 
-- **Redis opcional** (`REDIS_URL`): rate limit distribuído (`src/lib/rateLimitStore.ts`) + filas (`src/lib/queue.ts`). Sem Redis, tudo cai em fallback em memória.
-- **Worker** (`npm run worker` / `src/worker.ts`): roda o cron de cobrança + consome filas (`billing:run`, `billing:tenant`). Com worker dedicado, subir o server com `BILLING_IN_WORKER=true` para não duplicar o cron.
+- **Redis opcional** (`REDIS_URL`): rate limit distribuído (`src/lib/rateLimitStore.ts`) + filas (`src/lib/queue.ts`) com retry (3 tentativas, reenfileiramento com backoff). Sem Redis, tudo cai em fallback em memória.
+- **Worker** (`npm run worker` / `src/worker.ts`): roda o cron de cobrança + consome filas (`billing:run`, `billing:tenant`, `email:send`). Com worker dedicado, subir o server com `BILLING_IN_WORKER=true` para não duplicar o cron.
+- **E-mails via fila** (`src/jobs/email.ts`): `enqueueEmail()` dispara `email:send` com retry; usado na recuperação de senha (link + confirmação "senha alterada"). Handlers registrados no server e no worker.
 - **Auditoria** (`src/lib/audit.ts` + model `AuditLog`): ações admin e login/2FA são gravadas. Consulta: `GET /api/admin/audit-logs`.
 - **2FA TOTP** (`src/lib/totp.ts`): `POST /api/auth/2fa/setup` → `/2fa/enable` → login exige `code` e retorna `requires2FA` + `tempToken` (10min) → `POST /api/auth/2fa/verify`. Tokens com `twoFactorPending` são rejeitados pelo `authenticate`.
 - **Frontend**: `LoginModal.tsx` tem passo de código 2FA; setup em Configurações → Conta (`TwoFactorSetup.tsx`).
