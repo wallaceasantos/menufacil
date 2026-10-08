@@ -8,14 +8,38 @@ import { isValidCpf, sanitizeCpf } from '../lib/cpf'
 import { sendEmail } from '../lib/email'
 import { logger, errorMeta } from '../lib/logger'
 import { generateSecret, verifyTotp, otpauthUrl } from '../lib/totp'
-import { auditFromRequest } from '../lib/audit'
+import { auditFromRequest, logAudit } from '../lib/audit'
+import { getRedis, isRedisAvailable } from '../lib/redis'
 
 const router = Router()
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000
+const RESET_EMAIL_LIMIT = 3
+const RESET_EMAIL_WINDOW_MS = 60 * 60 * 1000
+const resetEmailAttempts = new Map<string, { count: number; resetTime: number }>()
 
 function hashResetToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex')
+}
+
+async function isResetEmailThrottled(email: string): Promise<boolean> {
+  const redis = getRedis()
+  const key = `rl:reset:${email}`
+
+  if (redis && isRedisAvailable()) {
+    const count = await redis.incr(key).catch(() => 1)
+    if (count === 1) await redis.expire(key, Math.floor(RESET_EMAIL_WINDOW_MS / 1000)).catch(() => {})
+    return count > RESET_EMAIL_LIMIT
+  }
+
+  const now = Date.now()
+  const entry = resetEmailAttempts.get(key)
+  if (!entry || entry.resetTime <= now) {
+    resetEmailAttempts.set(key, { count: 1, resetTime: now + RESET_EMAIL_WINDOW_MS })
+    return false
+  }
+  entry.count += 1
+  return entry.count > RESET_EMAIL_LIMIT
 }
 
 function serializeUser(user: any) {
@@ -81,6 +105,7 @@ router.post('/register', async (req, res, next) => {
       email: user.email,
       role: user.role,
       tenantId: user.tenantId,
+      tokenVersion: user.tokenVersion,
     })
 
     res.status(201).json({
@@ -127,6 +152,7 @@ router.post('/login', async (req, res, next) => {
             role: user.role,
             tenantId: user.tenantId,
             twoFactorPending: true,
+            tokenVersion: user.tokenVersion,
           },
           '10m'
         )
@@ -145,6 +171,7 @@ router.post('/login', async (req, res, next) => {
       email: user.email,
       role: user.role,
       tenantId: user.tenantId,
+      tokenVersion: user.tokenVersion,
     })
 
     auditFromRequest(req, 'auth.login', 'user', user.id, { email: user.email })
@@ -168,6 +195,12 @@ router.post('/forgot-password', async (req, res, next) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase()
+
+    if (await isResetEmailThrottled(normalizedEmail)) {
+      res.status(429).json({ error: 'Muitas solicitações de recuperação. Tente novamente em alguns minutos.' })
+      return
+    }
+
     const user = await prisma.user.findFirst({
       where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
       include: { tenant: true },
@@ -193,6 +226,19 @@ router.post('/forgot-password', async (req, res, next) => {
         expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
       },
     })
+
+    logAudit(
+      {
+        userId: user.id,
+        tenantId: user.tenantId || null,
+        actorEmail: user.email,
+        actorRole: user.role,
+        action: 'auth.forgot_password',
+        resource: 'user',
+        resourceId: user.id,
+      },
+      req
+    )
 
     const appUrl = process.env.APP_URL || 'http://localhost:3000'
     const resetLink = `${appUrl.replace(/\/$/, '')}/reset-password?token=${rawToken}`
@@ -243,16 +289,40 @@ router.post('/reset-password', async (req, res, next) => {
 
     const passwordHash = await hashPassword(password)
 
-    await prisma.$transaction([
+    const [updatedUser] = await prisma.$transaction([
       prisma.user.update({
         where: { id: resetToken.userId },
-        data: { passwordHash },
+        data: { passwordHash, tokenVersion: { increment: 1 } },
       }),
       prisma.passwordResetToken.update({
         where: { id: resetToken.id },
         data: { usedAt: new Date() },
       }),
     ])
+
+    logAudit(
+      {
+        userId: updatedUser.id,
+        tenantId: updatedUser.tenantId || null,
+        actorEmail: updatedUser.email,
+        actorRole: updatedUser.role,
+        action: 'auth.reset_password',
+        resource: 'user',
+        resourceId: updatedUser.id,
+      },
+      req
+    )
+
+    sendEmail({
+      to: updatedUser.email,
+      subject: 'Sua senha foi alterada — MenuFácil',
+      text: `Olá, ${updatedUser.name}.\n\nSua senha no MenuFácil foi alterada com sucesso.\n\nSe você não fez esta alteração, recupere seu acesso imediatamente pela opção "Esqueci minha senha" na tela de login.`,
+      html: `
+        <p>Olá, <strong>${updatedUser.name}</strong>.</p>
+        <p>Sua senha no <strong>MenuFácil</strong> foi alterada com sucesso.</p>
+        <p>Se você não fez esta alteração, recupere seu acesso imediatamente pela opção <strong>"Esqueci minha senha"</strong> na tela de login.</p>
+      `,
+    }).catch(() => {})
 
     res.json({ message: 'Senha redefinida com sucesso. Você já pode entrar com a nova senha.' })
   } catch (err) {
@@ -384,6 +454,7 @@ router.post('/2fa/verify', async (req, res, next) => {
       email: user.email,
       role: user.role,
       tenantId: user.tenantId,
+      tokenVersion: user.tokenVersion,
     })
 
     auditFromRequest(req, 'auth.login_2fa', 'user', user.id, { email: user.email })
@@ -490,6 +561,7 @@ router.post('/register-tenant', async (req, res, next) => {
         email,
         role: 'tenant',
         tenantId: invite.tenantId,
+        tokenVersion: 0,
       })
 
       res.status(201).json({
@@ -545,6 +617,7 @@ router.post('/register-tenant', async (req, res, next) => {
       email: user.email,
       role: user.role,
       tenantId: user.tenantId,
+      tokenVersion: user.tokenVersion,
     })
 
     res.status(201).json({

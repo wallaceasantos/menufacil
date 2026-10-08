@@ -86,6 +86,7 @@ model User {
   tenantRole   String?         @default("dono") @map("tenant_role") @db.VarChar(50)
   twoFactorEnabled Boolean     @default(false) @map("two_factor_enabled")
   twoFactorSecret String?      @map("two_factor_secret") @db.VarChar(64)
+  tokenVersion Int             @default(0) @map("token_version")
   createdAt    DateTime?       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime?       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   tickets      SupportTicket[]

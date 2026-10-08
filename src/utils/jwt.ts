@@ -9,6 +9,7 @@ export interface TokenPayload {
   role: string
   tenantId?: string | null
   twoFactorPending?: boolean
+  tokenVersion?: number
 }
 
 export function signToken(payload: TokenPayload, expiresIn: jwt.SignOptions['expiresIn'] = '7d'): string {

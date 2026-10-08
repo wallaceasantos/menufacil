@@ -23,6 +23,14 @@ describe('jwt', () => {
     expect(payload.tenantId).toBe('t1')
   })
 
+  it('preserva tokenVersion no payload', async () => {
+    const { signToken, verifyToken } = await import('../jwt')
+    const token = signToken({ userId: 'u1', email: 'a@b.com', role: 'tenant', tokenVersion: 3 })
+    const payload = verifyToken(token)
+    expect(payload.tokenVersion).toBe(3)
+    expect(verifyToken(signToken({ userId: 'u1', email: 'a@b.com', role: 'tenant' })).tokenVersion ?? 0).toBe(0)
+  })
+
   it('rejeita token adulterado', async () => {
     const { signToken, verifyToken } = await import('../jwt')
     const token = signToken({ userId: 'u1', email: 'a@b.com', role: 'tenant' })

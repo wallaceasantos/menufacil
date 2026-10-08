@@ -1,7 +1,8 @@
 import type { Request, Response, NextFunction } from 'express'
 import { verifyToken } from '../utils/jwt'
+import { prisma } from '../lib/prisma'
 
-export function authenticate(req: Request, res: Response, next: NextFunction) {
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization
   const token = authHeader?.split(' ')[1]
 
@@ -16,6 +17,22 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
       res.status(401).json({ error: 'Verificação de dois fatores pendente' })
       return
     }
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { tokenVersion: true },
+    })
+
+    if (!user) {
+      res.status(401).json({ error: 'Token inválido' })
+      return
+    }
+
+    if ((payload.tokenVersion ?? 0) !== user.tokenVersion) {
+      res.status(401).json({ error: 'Sessão expirada. Faça login novamente.' })
+      return
+    }
+
     req.user = payload
     next()
   } catch {

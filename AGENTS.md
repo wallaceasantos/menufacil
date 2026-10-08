@@ -180,6 +180,8 @@ src/
 - `cozinha` — orders:rw
 - `entregador` — orders:r
 
+**Sessões (tokenVersion):** JWT carrega `tokenVersion`; `authenticate` compara com `User.tokenVersion` no banco. Recuperação de senha incrementa a versão → todas as sessões do usuário são invalidadas. Recuperação também: throttling 3 e-mails/hora por destinatário, auditoria (`auth.forgot_password`/`auth.reset_password`) e e-mail de confirmação "senha alterada".
+
 **Sidebar filtering:** `DashboardLayout.tsx` uses `allNavItems.filter(item => item.roles.includes(tenantRole) && item.plans.includes(userPlan))`
 
 **Public routes (no auth):** `/api/loja/*`, `/api/mp/webhook`, `/api/domain-check`, `/api/testimonials`, `/api/events/stream` (token in query params), `/register`
