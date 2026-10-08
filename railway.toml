@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install --include=optional && npm run build"
+buildCommand = "npm install --include=optional && npm install --no-save @tailwindcss/oxide-linux-x64-gnu@4.3.2 lightningcss-linux-x64-gnu@1.32.0 @rollup/rollup-linux-x64-gnu@4.62.2 @esbuild/linux-x64@0.25.12 && npm run build"
 
 [deploy]
 startCommand = "npx prisma db push --skip-generate && npx tsx src/server.ts"
