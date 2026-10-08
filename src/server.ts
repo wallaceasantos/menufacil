@@ -191,10 +191,16 @@ app.get('/health', async (_req, res) => {
 })
 
 // Serve React SPA in production
+import fs from 'fs'
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distPath = path.resolve(__dirname, '..', 'dist')
 
-if (process.env.NODE_ENV === 'production' || process.env.SERVE_STATIC === 'true') {
+if (
+  process.env.NODE_ENV === 'production' ||
+  process.env.SERVE_STATIC === 'true' ||
+  fs.existsSync(path.join(distPath, 'index.html'))
+) {
   app.use(express.static(distPath))
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next()
