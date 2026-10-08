@@ -29,7 +29,7 @@
     "db:pull": "prisma db pull",
     "db:backup": "tsx scripts/backup-db.ts",
     "start": "vite build && tsx src/server.ts",
-    "start:prod": "vite build && prisma migrate deploy && tsx src/server.ts",
+    "start:prod": "vite build && npx prisma db push --skip-generate && tsx src/server.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
